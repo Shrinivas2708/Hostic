@@ -3,6 +3,8 @@ import connectToDB from "./config/db";
 import express from "express";
 import cors from "cors"
 import { User } from "./model/User.model";
+import authRouter from "./router/auth.routes";
+import { errorHandler } from "./utils/errorHandler";
 const app = express();
 const PORT = process.env.PORT || 5000;
 (async () => {
@@ -17,18 +19,9 @@ app.use(cors({
 
 app.use(express.json())
 app.get("/",async (req,res)=>{
-    const response = await User.create({
-        username:"testuser",
-        email:"ssherikar2005@gmail.com",
-        password:"password123",
-
-    })
-    console.log("User created:", response);
-    await User.deleteOne({
-        id: response._id
-    })
-    console.log("User deleted:", response._id);
     res.json({
         message:"Welcome to Host It APIs!"
     })
 })
+app.use("/api/auth",authRouter)
+app.use(errorHandler);
