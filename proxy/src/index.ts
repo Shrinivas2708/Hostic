@@ -82,7 +82,7 @@ app.use(async (req: Request, res: Response) => {
         "Cache-Control": "public, max-age=3600",
       });
 
-      pipeline(r2Response, res, (err) => {
+      pipeline(r2Response, res, (err:any) => {
         if (err) {
           console.error("Streaming error:", err);
           res.status(500).send("Error streaming file");
