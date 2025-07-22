@@ -71,4 +71,28 @@ export const login = async (req:Request , res:Response, next:NextFunction)=>{
     next(error)
   }
 }
-
+export const deleteAccount = async(req:Request , res:Response, next:NextFunction)=>{
+  const user_id = req.id;
+  try {
+    await User.findOneAndDelete({_id:user_id})
+    res.status(200).json({
+      message:"Successfully deleted!"
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+export const update = async(req:Request , res:Response, next:NextFunction)=>{
+  const user_id = req.id;
+  const body = req.body
+  try {
+    await User.findByIdAndUpdate({_id:user_id},{
+      body
+    })
+    res.status(200).json({
+      message:"Successfully updated!"
+    })
+  } catch (error) {
+    next(error)
+  }
+}

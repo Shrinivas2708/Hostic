@@ -132,6 +132,26 @@ export const redeploy = async (req: Request, res: Response, next: NextFunction) 
 };
 export const getDeployments = async (req: Request, res: Response, next: NextFunction)=>{
   const user_id = req.id;
-  const deployments = await Deployments.find({user_id})
-  res.status(200).json({deployments})
+ try {
+   const deployments = await Deployments.find({user_id})
+   if(!deployments){
+     res.status(401).json({meesage:"No deployments!"})
+   }
+   res.status(200).json({deployments})
+ } catch (error) {
+  next(error)
+ }
+}
+export const deleteDeployment = async (req: Request, res: Response, next: NextFunction)=>{
+  const user_id = req.id;
+  const {deployment_id} = req.body
+ try {
+   const deployments = await Deployments.findByIdAndDelete({deployment_id})
+   if(!deployments){
+     res.status(401).json({meesage:"Such deployment doesnt exists!"})
+   }
+   res.status(200).json({message:"Deployment deleted successfully!"})
+ } catch (error) {
+  next(error)
+ }
 }
