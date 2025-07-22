@@ -1,13 +1,12 @@
-require("dotenv").config();
 import express, { Request, Response } from "express";
 import mongoose from "mongoose";
-import { request } from "https";
+import { request as httpsRequest } from "https";
 import { pipeline } from "stream";
+import path from "path";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Deployments, IDeployment } from "./model/Deployments.model";
 import { Builds, BuildStatus } from "./model/Builds.model";
-import path from "path";
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -17,7 +16,6 @@ const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY;
 const R2_SECRET_KEY = process.env.R2_SECRET_KEY;
 const R2_BUCKET = process.env.R2_BUCKET || "hostit";
 
-// Define the absolute path to the public folder
 const PUBLIC_PATH = path.resolve(__dirname, "..", "public");
 
 if (!R2_ACCESS_KEY || !R2_SECRET_KEY) {
@@ -32,15 +30,42 @@ const s3Client = new S3Client({
 
 mongoose.connect(MONGODB_URI).catch((err) => console.error("MongoDB connection error:", err));
 
+// Trust proxy so we can read x-forwarded-host
+app.set("trust proxy", true);
+
+function getOriginalHostname(req: Request): string {
+  return (
+    (req.headers["x-forwarded-host"] as string) ||
+    (req.headers["x-original-host"] as string) ||
+    req.hostname
+  );
+}
+
+function extractSlug(hostname: string): string | null {
+  const suffix = ".apps.shriii.xyz";
+  return hostname.endsWith(suffix) ? hostname.slice(0, -suffix.length) : null;
+}
+
+function resolveRequestedFile(reqPath: string): string {
+  if (reqPath === "/") return "/index.html";
+  if (!reqPath.includes(".")) return "/index.html"; // SPA fallback
+  return reqPath;
+}
+
 app.use(async (req: Request, res: Response) => {
   try {
-    const hostname = req.hostname;
-    const subdomain = hostname.split(".")[0]; // e.g., "drab-millions-child" or "chubby-whining-airplane"
-    console.log(`Processing request for subdomain: ${subdomain}`);
+    const hostname = getOriginalHostname(req);
+    const slug = extractSlug(hostname);
+    console.log(`Incoming host=${hostname} slug=${slug}`);
 
-    const deployment: IDeployment | null = await Deployments.findOne({ slug: subdomain });
-    if (!deployment || !deployment.current_build_id) {
-      console.log(`Deployment not found for slug: ${subdomain}`);
+    if (!slug) {
+      res.status(404).sendFile(path.join(PUBLIC_PATH, "404.html"));
+      return;
+    }
+
+    const deployment: IDeployment | null = await Deployments.findOne({ slug });
+    if (!deployment?.current_build_id) {
+      console.log(`Deployment not found for slug: ${slug}`);
       res.status(404).sendFile(path.join(PUBLIC_PATH, "404.html"));
       return;
     }
@@ -49,16 +74,18 @@ app.use(async (req: Request, res: Response) => {
       _id: deployment.current_build_id,
       status: BuildStatus.Success,
     });
-    if (!build || !build.artifact_path) {
-      console.log(`Successful build not found for build_id: ${deployment.current_build_id}`);
+
+    if (!build?.artifact_path) {
+      console.log(`No successful build for ${deployment.current_build_id}`);
       res.status(404).sendFile(path.join(PUBLIC_PATH, "404.html"));
       return;
     }
 
-    let basePath = build.artifact_path.replace(/^\/|\/$/g, ""); // Remove leading and trailing slashes
-    const filePath = req.path === "/" ? "/index.html" : req.path; // Serve index.html for root
-    const fileKey = `${basePath}${filePath}`.replace(/^\/|\/$/g, ""); // Ensure no extra slashes
-    console.log(`Requested Path: ${req.path}, Constructed File Key: ${fileKey}`);
+    const artifactBase = build.artifact_path.replace(/^\/+|\/+$/g, "");
+    const filePath = resolveRequestedFile(req.path);
+    const fileKey = `${artifactBase}${filePath}`.replace(/^\/+/, "");
+
+    console.log(`Requested Path: ${req.path} -> fileKey=${fileKey}`);
 
     const r2Url = await getSignedUrl(
       s3Client,
@@ -67,38 +94,35 @@ app.use(async (req: Request, res: Response) => {
     );
     console.log(`Signed URL: ${r2Url}`);
 
-    const r2Request = request(r2Url, { method: "GET" });
+    const r2Req = httpsRequest(r2Url, { method: "GET" });
 
-    r2Request.on("response", (r2Response) => {
-      if (r2Response.statusCode !== 200) {
-        console.log(`R2 response error: ${r2Response.statusCode}, URL: ${r2Url}`);
+    r2Req.on("response", (r2Resp) => {
+      if (r2Resp.statusCode !== 200) {
+        console.log(`R2 responded ${r2Resp.statusCode} for ${fileKey}`);
         res.status(404).sendFile(path.join(PUBLIC_PATH, "404.html"));
         return;
       }
 
       res.set({
-        "Content-Type": r2Response.headers["content-type"] || "text/html",
-        "Content-Length": r2Response.headers["content-length"],
+        "Content-Type": r2Resp.headers["content-type"] || "application/octet-stream",
+        "Content-Length": r2Resp.headers["content-length"],
         "Cache-Control": "public, max-age=3600",
       });
 
-      pipeline(r2Response, res, (err:any) => {
-        if (err) {
-          console.error("Streaming error:", err);
-          res.status(500).send("Error streaming file");
-        }
+      pipeline(r2Resp, res, (err: any) => {
+        if (err) console.error("Streaming error:", err);
       });
     });
 
-    r2Request.on("error", (err) => {
+    r2Req.on("error", (err) => {
       console.error("R2 request error:", err);
-      res.status(500).send("Error connecting to R2");
+      if (!res.headersSent) res.status(500).send("Error connecting to R2");
     });
 
-    r2Request.end();
-  } catch (error) {
-    console.error("Proxy error:", error);
-    res.status(500).send("Internal server error");
+    r2Req.end();
+  } catch (err) {
+    console.error("Proxy error:", err);
+    if (!res.headersSent) res.status(500).send("Internal server error");
   }
 });
 
