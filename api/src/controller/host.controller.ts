@@ -74,3 +74,64 @@ export const deploy = async (req: Request, res: Response, next: NextFunction) =>
     next(err);
   }
 };
+export const redeploy = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user_id = req.id;
+    if (!user_id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { deployment_id } = req.body as {
+      deployment_id: string;
+    };
+
+    // Verify deployment exists and belongs to user
+    const deployment = await Deployments.findOne({
+      _id: deployment_id,
+      user_id,
+    });
+
+    if (!deployment) {
+      return res.status(404).json({ message: "Deployment not found or unauthorized" });
+    }
+
+    // Create new build row with short build_name
+    const buildName = shortid.generate();
+    const build = await Builds.create({
+      deployment_id: deployment._id,
+      build_name: buildName,
+      status: BuildStatus.Queued,
+    });
+
+    try {
+      // Queue job for worker with existing deployment details
+      await enqueueBuild({
+        buildId: build.build_name,
+        deploymentId: deployment._id.toString(),
+        userId: user_id.toString(),
+        repo_url: deployment.repo_url,
+        slug: deployment.slug,
+        project_type: deployment.projectType,
+        buildCommands: deployment.buildCommands,
+      });
+
+      res.json({
+        deployment_id: deployment._id,
+        build_id: build._id,
+        build_name: buildName,
+        slug: deployment.slug,
+        status: BuildStatus.Queued,
+      });
+    } catch (err) {
+      
+      throw err;
+    }
+  } catch (err) {
+    next(err);
+  }
+};
+export const getDeployments = async (req: Request, res: Response, next: NextFunction)=>{
+  const user_id = req.id;
+  const deployments = await Deployments.find({user_id})
+  res.status(200).json({deployments})
+}

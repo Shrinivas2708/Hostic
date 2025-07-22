@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Build Logs</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    #log-container {
+      border: 1px solid #ccc;
+      padding: 10px;
+      height: 400px;
+      overflow-y: auto;
+      background-color: #f9f9f9;
+      margin-top: 10px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .log-entry {
+      margin: 5px 0;
+      word-wrap: break-word;
+    }
+    .error {
+      color: red;
+    }
+    .message {
+      color: green;
+    }
+    #build-id-input {
+      padding: 5px;
+      margin-right: 10px;
+      width: 200px;
+    }
+    button {
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    button:disabled {
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <h1>Build Logs</h1>
+  <div>
+    <input type="text" id="build-id-input" placeholder="Enter Build ID" />
+    <button onclick="connectSocket()">Connect</button>
+    <button onclick="disconnectSocket()" disabled>Disconnect</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+  </div>
+  <div id="log-container"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+    let socket = null;
+
+    function appendLog(message, className = '') {
+      console.log(`[Client] Appending log: ${message}`);
+      const logContainer = document.getElementById('log-container');
+      if (!logContainer) {
+        console.error('[Client] Error: #log-container not found in DOM');
+        return;
+      }
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log-entry' + (className ? ` ${className}` : '');
+      logEntry.textContent = message;
+      logContainer.appendChild(logEntry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function connectSocket() {
+      const buildId = document.getElementById('build-id-input').value.trim();
+      if (!buildId) {
+        appendLog('Please enter a Build ID', 'error');
+        console.error('[Client] No Build ID provided');
+        return;
+      }
+
+      if (socket && socket.connected) {
+        appendLog('Already connected. Disconnect first to change Build ID', 'error');
+        console.warn('[Client] Socket already connected');
+        return;
+      }
+
+      console.log(`[Client] Connecting to Socket.IO for buildId: ${buildId}`);
+      socket = io('http://localhost:9001', {
+        query: { buildId },
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000
+      });
+
+      socket.on('connect', () => {
+        appendLog(`Connected to Socket.IO server for buildId: ${buildId}`, 'message');
+        console.log(`[Client] Socket.IO connected for buildId: ${buildId}`);
+        document.getElementById('build-id-input').disabled = true;
+        document.querySelector('button[onclick="connectSocket()"]').disabled = true;
+        document.querySelector('button[onclick="disconnectSocket()"]').disabled = false;
+      });
+
+      socket.on('log', (msg) => {
+        let parsedMsg = msg;
+        try {
+          // Handle JSON-stringified messages from Redis
+          parsedMsg = JSON.parse(msg);
+        } catch (e) {
+          console.warn('[Client] Message not JSON, using raw: ', msg);
+        }
+        console.log(`[Client] Received log: ${parsedMsg}`);
+        appendLog(parsedMsg);
+      });
+
+      socket.on('message', (msg) => {
+        console.log(`[Client] Received message: ${msg}`);
+        appendLog(msg, 'message');
+      });
+
+      socket.on('error', (msg) => {
+        console.log(`[Client] Received error: ${msg}`);
+        appendLog(msg, 'error');
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.log(`[Client] Socket.IO disconnected: ${reason}`);
+        appendLog(`Disconnected from Socket.IO server: ${reason}`, 'error');
+        document.getElementById('build-id-input').disabled = false;
+        document.querySelector('button[onclick="connectSocket()"]').disabled = false;
+        document.querySelector('button[onclick="disconnectSocket()"]').disabled = true;
+      });
+
+      socket.on('connect_error', (err) => {
+        console.log(`[Client] Connection error: ${err.message}`);
+        appendLog(`Connection error: ${err.message}`, 'error');
+      });
+    }
+
+    function disconnectSocket() {
+      if (socket) {
+        console.log('[Client] Disconnecting Socket.IO');
+        socket.disconnect();
+        socket = null;
+        appendLog('Manually disconnected from Socket.IO server', 'message');
+        document.getElementById('build-id-input').disabled = false;
+        document.querySelector('button[onclick="connectSocket()"]').disabled = false;
+        document.querySelector('button[onclick="disconnectSocket()"]').disabled = true;
+      }
+    }
+
+    function clearLogs() {
+      const logContainer = document.getElementById('log-container');
+      if (logContainer) {
+        logContainer.innerHTML = '';
+        appendLog('Logs cleared', 'message');
+        console.log('[Client] Logs cleared');
+      }
+    }
+
+    document.addEventListener('submit', (e) => {
+      e.preventDefault();
+      console.log('[Client] Prevented form submission');
+    });
+
+    window.addEventListener('beforeunload', (e) => {
+      if (socket && socket.connected) {
+        console.log('[Client] Preventing page unload while connected');
+        e.preventDefault();
+        e.returnValue = 'Logs are still streaming. Are you sure you want to leave?';
+      }
+    });
+  </script>
+</body>
+</html>

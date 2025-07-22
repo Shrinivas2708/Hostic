@@ -11,7 +11,13 @@ export const createToken = (id:String)=>{
     }
 }
 export const verifyToken = (req:Request,res:Response,next:NextFunction)=>{
-  const token = req.headers.authorization!.split(" ")[1]
+  const authHeader = req.headers.authorization!
+  if(!authHeader){
+    res.status(401).json({
+      message:"Token missing!"
+    })
+  }
+  const token = authHeader.split(" ")[1]
   const decode = jwt.verify(token,secret) as JwtPayload
   console.log(decode)
   if(!decode){
