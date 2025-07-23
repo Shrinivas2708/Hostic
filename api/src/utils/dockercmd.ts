@@ -3,11 +3,13 @@ export function dockerCmd(hostPath: string, shellCommand: string, name?: string)
   const volPath = hostPath.replace(/\\/g, "/");
 
   const args = [
-    "run",
-    "--rm",
-    "-v", `${volPath}:/app`,
-    "-w", "/app",
-  ];
+  "run",
+  "--rm",
+  "-v", `${volPath}:/app`,
+  "-w", "/app",
+  "--user", `${process.getuid?.() || 1000}:${process.getgid?.() || 1000}`,  
+];
+
 
   if (name) {
     args.push("--name", name);
