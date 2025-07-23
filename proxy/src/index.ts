@@ -10,7 +10,7 @@ import { Deployments, IDeployment } from "./model/Deployments.model";
 import { Builds, BuildStatus } from "./model/Builds.model";
 
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 8080;
 const BASE_PATH =
   "https://2b086fbe3c7ee18f666646ea5178c5e2.r2.cloudflarestorage.com";
 const MONGODB_URI =
