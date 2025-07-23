@@ -91,13 +91,12 @@ export async function processJob(job: BuildJob): Promise<string[]> {
     logger.log("clone done");
 
     // Step A: install
-const lockFilePath = path.join(workDir, "package-lock.json");
-const installCommand = fs.existsSync(lockFilePath) ? "npm ci" : "npm install";
+    const projectRoot = findProjectRoot(workDir);
+if (!projectRoot) throw new Error("package.json not found in repository");
 
-logger.log(`npm install step (command: ${installCommand})...`);
-const installCmd = dockerCmd(workDir, installCommand, `install-${buildId}`);
-await runStreamingDocker(installCmd, logger);
-
+const installCmd = dockerCmd(projectRoot, "npm install", `install-${buildId}`);
+    logger.log("npm install step...");
+    await runStreamingDocker(installCmd, logger);
 
     // Step B: build
     const userBuild = buildCommands?.trim();
