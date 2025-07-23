@@ -4,8 +4,8 @@ import path from "path";
 import type { BuildLogger } from "./logger";
 
 /**
- * Try to find a build output directory.
- * Logs what it checks. Returns absolute path or null.
+ * Recursively search for a build output directory (dist, build, etc.).
+ * Returns absolute path or null.
  */
 export function detectArtifactPath(
   workDir: string,
@@ -14,31 +14,38 @@ export function detectArtifactPath(
 ): string | null {
   logger.log(`🔍 detect artifacts (projectType=${projectType}) in ${workDir}`);
 
-  // Type hints (extend later if wanted)
   const typeHints: Record<string, string[]> = {
     vite: ["dist"],
     react: ["dist", "build"],
     static: ["public", "dist", "build"],
   };
 
-  const candidates = [
+  const candidates = new Set([
     ...(typeHints[projectType] ?? []),
     "dist",
     "build",
     "out",
     "public",
-  ];
+  ]);
 
-  const seen = new Set<string>();
-  for (const c of candidates) {
-    if (seen.has(c)) continue;
-    seen.add(c);
-    const full = path.join(workDir, c);
-    const exists = fs.existsSync(full);
-    logger.log(` • check ${c} -> ${exists ? "FOUND" : "missing"}`);
-    if (exists) return full;
+  function searchDir(dir: string): string | null {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+
+      if (entry.isDirectory()) {
+        if (candidates.has(entry.name)) {
+          logger.log(` • FOUND artifact: ${fullPath}`);
+          return fullPath;
+        }
+        const found = searchDir(fullPath);
+        if (found) return found;
+      }
+    }
+    return null;
   }
 
-  logger.error("No artifact directory found.");
-  return null;
+  const result = searchDir(workDir);
+  if (!result) logger.error("No artifact directory found.");
+  return result;
 }

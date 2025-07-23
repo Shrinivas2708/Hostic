@@ -1,3 +1,4 @@
+require("dotenv").config();
 import express, { Request, Response } from "express";
 import mongoose from "mongoose";
 import { request as httpsRequest } from "https";
@@ -10,16 +11,20 @@ import { Builds, BuildStatus } from "./model/Builds.model";
 
 const app = express();
 const PORT = process.env.PORT || 8000;
-const BASE_PATH = "https://2b086fbe3c7ee18f666646ea5178c5e2.r2.cloudflarestorage.com";
-const MONGODB_URI = process.env.DATABASE_URL || "mongodb://localhost:27017/your-db";
+const BASE_PATH =
+  "https://2b086fbe3c7ee18f666646ea5178c5e2.r2.cloudflarestorage.com";
+const MONGODB_URI =
+  process.env.DATABASE_URL || "mongodb://localhost:27017/your-db";
 const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY;
 const R2_SECRET_KEY = process.env.R2_SECRET_KEY;
 const R2_BUCKET = process.env.R2_BUCKET || "hostit";
-
+console.log(R2_ACCESS_KEY, R2_SECRET_KEY);
 const PUBLIC_PATH = path.resolve(__dirname, "..", "public");
 
 if (!R2_ACCESS_KEY || !R2_SECRET_KEY) {
-  throw new Error("Missing R2_ACCESS_KEY or R2_SECRET_KEY environment variables");
+  throw new Error(
+    "Missing R2_ACCESS_KEY or R2_SECRET_KEY environment variables"
+  );
 }
 
 const s3Client = new S3Client({
@@ -28,7 +33,9 @@ const s3Client = new S3Client({
   credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
 });
 
-mongoose.connect(MONGODB_URI).catch((err) => console.error("MongoDB connection error:", err));
+mongoose
+  .connect(MONGODB_URI)
+  .catch((err) => console.error("MongoDB connection error:", err));
 
 // Trust proxy so we can read x-forwarded-host
 app.set("trust proxy", true);
@@ -70,10 +77,29 @@ app.use(async (req: Request, res: Response) => {
       return;
     }
 
-    const build = await Builds.findOne({
-      _id: deployment.current_build_id,
-      status: BuildStatus.Success,
-    });
+    const build = await Builds.findById(deployment.current_build_id);
+
+    if (!build) {
+      console.log(`Build not found for ${deployment.current_build_id}`);
+      res.status(404).sendFile(path.join(PUBLIC_PATH, "404.html"));
+      return;
+    }
+
+    // Show building page if build is still queued or in progress
+    if (
+      build.status === BuildStatus.Building ||
+      build.status === BuildStatus.Queued
+    ) {
+      res.status(200).sendFile(path.join(PUBLIC_PATH, "building.html"));
+      return;
+    }
+
+    // No artifact means no successful build
+    if (build.status !== BuildStatus.Success || !build.artifact_path) {
+      console.log(`No successful build for ${deployment.current_build_id}`);
+      res.status(404).sendFile(path.join(PUBLIC_PATH, "404.html"));
+      return;
+    }
 
     if (!build?.artifact_path) {
       console.log(`No successful build for ${deployment.current_build_id}`);
@@ -104,7 +130,8 @@ app.use(async (req: Request, res: Response) => {
       }
 
       res.set({
-        "Content-Type": r2Resp.headers["content-type"] || "application/octet-stream",
+        "Content-Type":
+          r2Resp.headers["content-type"] || "application/octet-stream",
         "Content-Length": r2Resp.headers["content-length"],
         "Cache-Control": "public, max-age=3600",
       });
