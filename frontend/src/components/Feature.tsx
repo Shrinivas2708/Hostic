@@ -1,110 +1,88 @@
+import { Box, Lock, Search, Settings, Sparkles } from "lucide-react";
+import { GlowingEffect } from "./ui/glowing-effect";
 
-import {
-  IconAdjustmentsBolt,
-  IconCloud,
-  IconCurrencyDollar,
-  IconEaseInOut,
-  IconHeart,
-  IconHelp,
-  IconRouteAltLeft,
-  IconTerminal2,
-} from "@tabler/icons-react";
-import { cn } from "../lib/utils";
-
-export function FeaturesSectionDemo() {
-  const features = [
-    {
-      title: "Built for developers",
-      description:
-        "Built for engineers, developers, dreamers, thinkers and doers.",
-      icon: <IconTerminal2 />,
-    },
-    {
-      title: "Ease of use",
-      description:
-        "It's as easy as using an Apple, and as expensive as buying one.",
-      icon: <IconEaseInOut />,
-    },
-    {
-      title: "Pricing like no other",
-      description:
-        "Our prices are best in the market. No cap, no lock, no credit card required.",
-      icon: <IconCurrencyDollar />,
-    },
-    {
-      title: "100% Uptime guarantee",
-      description: "We just cannot be taken down by anyone.",
-      icon: <IconCloud />,
-    },
-    {
-      title: "Multi-tenant Architecture",
-      description: "You can simply share passwords instead of buying new seats",
-      icon: <IconRouteAltLeft />,
-    },
-    {
-      title: "24/7 Customer Support",
-      description:
-        "We are available a 100% of the time. Atleast our AI Agents are.",
-      icon: <IconHelp />,
-    },
-    {
-      title: "Money back guarantee",
-      description:
-        "If you donot like EveryAI, we will convince you to like us.",
-      icon: <IconAdjustmentsBolt />,
-    },
-    {
-      title: "And everything else",
-      description: "I just ran out of copy ideas. Accept my sincere apologies",
-      icon: <IconHeart />,
-    },
-  ];
+interface GridItemProps {
+  area: string;
+  icon: React.ReactNode;
+  title: string;
+  description: React.ReactNode;
+  
+}
+export function Features() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4  relative z-10 py-10 max-w-7xl mx-auto">
-      {features.map((feature, index) => (
-        <Feature key={feature.title} {...feature} index={index} />
-      ))}
-    </div>
+   <>
+   <div className=" p-10 md:text-6xl text-4xl font-bold text-center ">
+Feat<span className="text-[#246BFD]">ures</span> 
+   </div>
+    <ul className="grid grid-cols-1 grid-rows-none gap-4 md:grid-cols-12 md:grid-rows-3 lg:gap-4 xl:max-h-[34rem] xl:grid-rows-2 p-10">
+      <GridItem
+        area="md:[grid-area:1/1/2/7] xl:[grid-area:1/1/2/5]"
+        icon={<Box className="h-5 w-5 text-[#246BFD]" />}
+        title="Containerized & Secure"
+        description="Your code runs in isolated Docker containers to ensure full security."
+      />
+
+      <GridItem
+        area="md:[grid-area:1/7/2/13] xl:[grid-area:2/1/3/5]"
+        icon={<Settings className="h-5 w-5 text-[#246BFD]" />}
+        title="Custom Build Commands"
+        description="Configure any framework: React, Next.js, Astro, Vue and more."
+      />
+
+      <GridItem
+        area="md:[grid-area:2/1/3/7] xl:[grid-area:1/5/3/8]"
+        icon={<Lock className="h-5 w-5 text-[#246BFD]" />}
+        title="Optimized for Performance"
+        description="Global CDN, build caching, and blazing fast previews."
+      />
+
+      <GridItem
+        area="md:[grid-area:2/7/3/13] xl:[grid-area:1/8/2/13]"
+        icon={<Sparkles className="h-5 w-5 text-[#246BFD]" />}
+        title="One-click Deploy"
+        description="Hook up GitHub and deploy instantly without complex setup."
+      />
+
+      <GridItem
+        area="md:[grid-area:3/1/4/13] xl:[grid-area:2/8/3/13]"
+        icon={<Search className="h-5 w-5 text-[#246BFD]" />}
+        title="Instant Redeploys"
+        description="Every push to your repo triggers an automated build and deploy."
+      />
+    </ul>
+   </>
   );
 }
 
-const Feature = ({
-  title,
-  description,
-  icon,
-  index,
-}: {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  index: number;
-}) => {
+const GridItem = ({ area, icon, title, description }: GridItemProps) => {
   return (
-    <div
-      className={cn(
-        "flex flex-col lg:border-r  py-10 relative group/feature dark:border-neutral-800",
-        (index === 0 || index === 4) && "lg:border-l dark:border-neutral-800",
-        index < 4 && "lg:border-b dark:border-neutral-800"
-      )}
-    >
-      {index < 4 && (
-        <div className="opacity-0 group-hover/feature:opacity-100 transition duration-200 absolute inset-0 h-full w-full bg-gradient-to-t from-neutral-100 dark:from-neutral-800 to-transparent pointer-events-none" />
-      )}
-      {index >= 4 && (
-        <div className="opacity-0 group-hover/feature:opacity-100 transition duration-200 absolute inset-0 h-full w-full bg-gradient-to-b from-neutral-100 dark:from-neutral-800 to-transparent pointer-events-none" />
-      )}
-      <div className="mb-4 relative z-10 px-10 text-neutral-600 dark:text-neutral-400">
-        {icon}
+    <li className={`min-h-[14rem] list-none ${area}`}>
+      <div className="relative h-full rounded-2xl border border-[#1E293B] p-2 transition ">
+        <GlowingEffect
+           blur={0}
+          borderWidth={3}
+          spread={80}
+          glow={true}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+        />
+        <div className="relative flex h-full flex-col justify-between gap-6 rounded-xl p-6">
+          <div className="flex flex-1 flex-col justify-between gap-3">
+            <div className="w-fit rounded-lg border border-[#1E293B] p-2 bg-[#1E293B]">
+              {icon}
+            </div>
+            <div className="space-y-3">
+              <h3 className="text-xl font-semibold text-white md:text-2xl">
+                {title}
+              </h3>
+              <p className="text-sm text-[#AFBCD5] md:text-base">
+                {description}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="text-lg font-bold mb-2 relative z-10 px-10">
-        <div className="absolute left-0 inset-y-0 h-6 group-hover/feature:h-8 w-1 rounded-tr-full rounded-br-full bg-neutral-300 dark:bg-neutral-700 group-hover/feature:bg-blue-500 transition-all duration-200 origin-center" />
-        <span className="group-hover/feature:translate-x-2 transition duration-200 inline-block text-neutral-800 dark:text-neutral-100">
-          {title}
-        </span>
-      </div>
-      <p className="text-sm text-neutral-600 dark:text-neutral-300 max-w-xs relative z-10 px-10">
-        {description}
-      </p>
-    </div>
+    </li>
   );
 };

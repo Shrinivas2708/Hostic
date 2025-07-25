@@ -14,8 +14,8 @@ export const Navbar = () => {
   };
 
   return (
-    <nav className="bg-transparent text-white px-24 py-4 flex items-center justify-between border-b border-white/10  w-full z-50">
-      <Link to="/" className="text-2xl font-bold tracking-wide flex gap-2 cursor-pointer text-[#E7DEFE]"><img src={rocket} alt="" /> Host It</Link>
+    <nav className="bg-transparent text-white md:px-24 px-5 py-4 flex items-center justify-between border-b border-white/10  w-full z-50">
+      <Link to="/" className="md:text-2xl text-lg font-bold tracking-wide flex gap-2 cursor-pointer text-[#E7DEFE]"><img src={rocket} alt="" /> Host It</Link>
 
       <div className="flex items-center gap-4">
         {token && user ? (
@@ -40,7 +40,7 @@ export const Navbar = () => {
           </>
         ) : (
           <>
-            <Link to="/login" className="hover:underline"><CTAButton variant='ghost'>
+            <Link to="/login"><CTAButton variant='ghost'>
               Login
               </CTAButton></Link>
             <Link to="/signup" ><CTAButton variant='outline'>Get Started</CTAButton></Link>
