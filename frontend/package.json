@@ -10,11 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@heroui/button": "^2.2.23",
-    "@heroui/card": "^2.2.22",
-    "@heroui/react": "^2.8.1",
-    "@heroui/system": "^2.4.19",
-    "@heroui/theme": "^2.4.19",
+  
     "@radix-ui/react-slot": "^1.2.3",
     "@tabler/icons-react": "^3.34.1",
     "@tailwindcss/vite": "^4.1.11",
