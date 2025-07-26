@@ -7,6 +7,7 @@ import StepCard from "../components/Card";
 import { Features } from "../components/Feature";
 import { steps } from "../exports";
 import Contact from "../components/Contact";
+import Pricing from "../components/Pricing";
 
 const Landing = () => {
   return (
@@ -63,7 +64,9 @@ const Landing = () => {
         </div>
       </section>
       <Features />
+      <Pricing />
       <Contact />
+      
     </>
   );
 };

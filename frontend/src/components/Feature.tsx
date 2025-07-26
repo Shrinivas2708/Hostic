@@ -11,10 +11,10 @@ interface GridItemProps {
 export function Features() {
   return (
    <>
-   <div className=" p-10 md:text-6xl text-4xl font-bold text-center ">
+   <div className=" p-10 md:text-6xl text-5xl font-bold text-center ">
 Feat<span className="text-[#246BFD]">ures</span> 
    </div>
-    <ul className="grid grid-cols-1 grid-rows-none gap-4 md:grid-cols-12 md:grid-rows-3 lg:gap-4 xl:max-h-[34rem] xl:grid-rows-2 p-10">
+    <ul className="grid grid-cols-1 grid-rows-none gap-4 md:grid-cols-12 md:grid-rows-3 lg:gap-4 xl:max-h-[34rem] xl:grid-rows-2 p-10 mb-10">
       <GridItem
         area="md:[grid-area:1/1/2/7] xl:[grid-area:1/1/2/5]"
         icon={<Box className="h-5 w-5 text-[#246BFD]" />}
