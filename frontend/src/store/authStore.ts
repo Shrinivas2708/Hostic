@@ -2,9 +2,11 @@ import { create } from 'zustand';
 import axios from '../lib/axios';
 
 type User = {
-  name: string;
+  username: string;
   email: string;
   avatarUrl?: string;
+  deployments_count:number;
+  createdAt : string
 };
 
 type AuthStore = {
@@ -27,7 +29,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   fetchUser: async () => {
     try {
       const res = await axios.get('/user/me'); // /api/user
-      set({ user: res.data });
+      set({ user: res.data.user });
     } catch (err) {
       console.error('Failed to fetch user', err);
       set({ user: null });

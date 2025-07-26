@@ -8,8 +8,12 @@ import { Features } from "../components/Feature";
 import { steps } from "../exports";
 import Contact from "../components/Contact";
 import Pricing from "../components/Pricing";
+import { useAuthStore } from "../store/authStore";
+import { useNavigate } from "react-router-dom";
 
 const Landing = () => {
+  const {token} = useAuthStore()
+  const navigate = useNavigate()
   return (
     <>
       <div className="relative min-h-screen  text-white overflow-hidden">
@@ -30,10 +34,13 @@ const Landing = () => {
                 Build, preview, and ship modern frontend apps with lightning
                 speed. Just push your code and let us handle the rest.
               </p>
-              <div className="px-6 py-3 rounded-full bg-[#246BFD] text-white font-semibold shadow-[0_0_20px_rgba(36,107,253,0.4)] hover:shadow-[0_0_25px_rgba(36,107,253,0.8)] transition duration-300 flex gap-3">
+              {token ? <div className="px-6 py-3 rounded-full bg-[#246BFD] text-white font-semibold shadow-[0_0_20px_rgba(36,107,253,0.4)] hover:shadow-[0_0_25px_rgba(36,107,253,0.8)] transition duration-300 flex gap-3 cursor-pointer" onClick={()=>navigate("/deploy")}>
+                
+                Start deploying
+              </div>: <div className="px-6 py-3 rounded-full bg-[#246BFD] text-white font-semibold shadow-[0_0_20px_rgba(36,107,253,0.4)] hover:shadow-[0_0_25px_rgba(36,107,253,0.8)] transition duration-300 flex gap-3 cursor-pointer" onClick={()=>navigate("/dashboard")}>
                 <img src={lightSvg} alt="" />
                 Get Started for Free
-              </div>
+              </div> }
             </div>
           }
         >

@@ -1,10 +1,11 @@
+const {heroui} = require('@heroui/theme');
 
 // tailwind.config.js
 export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
-    
+    "./node_modules/@heroui/theme/dist/components/(avatar|toast|spinner).js"
   ],
   theme: {
   	extend: {
@@ -70,5 +71,5 @@ export default {
 	
   },
   darkMode: ["class", "class"],
-  plugins: [ require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"),heroui()],
 };

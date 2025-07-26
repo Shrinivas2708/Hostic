@@ -5,12 +5,11 @@ import rocket from '../assets/rocket.svg';
 import { CTAButton } from './CTAButton';
 // import { Button } from './ui/button';
 export const Navbar = () => {
-  const { token, user,  logout } = useAuthStore();
-  const navigate = useNavigate();
+  const { token, user   } = useAuthStore();
+  const navigate = useNavigate()
+   const getInitials = (username: string) => {
 
-
-  const getInitials = (name: string) => {
-    return name.split(' ').map(part => part[0]).join('').toUpperCase();
+    return username.split(' ').map(part => part[0]).join('').toUpperCase();
   };
 
   return (
@@ -27,23 +26,18 @@ export const Navbar = () => {
       <div className="flex items-center gap-4">
         {token && user ? (
           <>
-            <span className="text-sm">{user.name}</span>
-            <div className="w-9 h-9 flex items-center justify-center rounded-full bg-white text-[#040B10] font-bold text-sm">
+          
+            <span className="text-sm">{user.username}</span>
+            <div className="w-9 h-9 flex items-center justify-center rounded-full border  font-bold text-sm cursor-pointer" onClick={()=> navigate("/dashboard")}>
+              
               {user.avatarUrl ? (
-                <img src={user.avatarUrl} alt="avatar" className="w-full h-full rounded-full object-cover" />
+                <img src={user.avatarUrl} alt="avatar" className="w-full h-full rounded-full object-cover " />
               ) : (
-                getInitials(user.name)
+                getInitials(user.username)
               )}
             </div>
-            <button
-              onClick={() => {
-                logout();
-                navigate('/login');
-              }}
-              className="text-sm underline underline-offset-2"
-            >
-              Logout
-            </button>
+            <CTAButton className='bg-[#246BFD] px-2' onClick={()=> navigate("/deploy")}>Deploy</CTAButton>
+            
           </>
         ) : (
           <>
