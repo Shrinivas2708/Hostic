@@ -23,8 +23,10 @@ function App() {
   return (
     <div className="relative min-h-screen bg-[#040B10] text-white overflow-hidden">
       {/* 💡 Background Glow Circles */}
-      <div className="absolute -top-72 -left-72 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-[#246BFD] opacity-40 rounded-full blur-[200px] z-0" />
-      <div className="absolute -bottom-72 -right-72 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-[#246BFD] opacity-20 rounded-full blur-[200px] z-0" />
+      <div className="absolute -top-72 -left-72 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-[#246BFD] opacity-40 rounded-full blur-[200px] z-0 pointer-events-none
+" />
+      <div className="absolute -bottom-72 -right-72 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-[#246BFD] opacity-20 rounded-full blur-[200px] z-0 pointer-events-none
+" />
 
       {/* 🔒 Main App */}
       <BrowserRouter>
