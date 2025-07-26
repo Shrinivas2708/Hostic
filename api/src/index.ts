@@ -15,9 +15,7 @@ const PORT = process.env.PORT || 5000;
   // Start your server after DB is connected
   app.listen(5000, () => console.log("Server running on port 5000"));
 })();
-app.use(cors({
-    origin: "*"
-}))
+app.use(cors())
 
 app.use(express.json())
 app.get("/",async (req,res)=>{
