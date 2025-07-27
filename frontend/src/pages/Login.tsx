@@ -37,20 +37,30 @@ function Login() {
     return "";
   };
 
-  const handleLogin = (e : React.FormEvent) => {
-    e.preventDefault()
-    if (!userName) {
-      setUsernameError("Username can't be empty")
-      return;
-    }
+  const handleLogin = (e: React.FormEvent) => {
+  e.preventDefault();
 
-    if (!password) {
-      setPasswordError("Password can't be empty")
-      return;
-    }
+  let hasError = false;
 
-    login({ userName, password });
-  };
+  if (!userName.trim()) {
+    setUsernameError("Username can't be empty");
+    hasError = true;
+  }
+
+  const passwordValidationError = validatePassword(password);
+  if (!password.trim()) {
+    setPasswordError("Password can't be empty");
+    hasError = true;
+  } else if (passwordValidationError) {
+    setPasswordError(passwordValidationError);
+    hasError = true;
+  }
+
+  if (hasError) return;
+
+  login({ userName, password });
+};
+
 
   useEffect(() => {
     if (error) {

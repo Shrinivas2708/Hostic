@@ -9,7 +9,7 @@ import Dashboard from './pages/Dashboard';
 import { useAuthStore } from './store/authStore';
 import { useEffect, useRef } from 'react';
 import {ToastProvider} from "@heroui/toast";
-import { HeroUIProvider } from '@heroui/system';
+// import { HeroUIProvider } from '@heroui/system';
 import Deploy from './pages/Deploy';
 function App() {
   const { token, user, fetchUser } = useAuthStore();
@@ -32,7 +32,7 @@ function App() {
 
       {/* 🔒 Main App */}
      
-     <HeroUIProvider>
+   
       
       <BrowserRouter>
         <Navbar />
@@ -62,7 +62,7 @@ function App() {
         <Footer />
       </BrowserRouter>
       <ToastProvider placement='top-center'/>
-      </HeroUIProvider>
+  
     </div>
   );
 }

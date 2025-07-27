@@ -10,12 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@heroui/avatar": "^2.2.19",
-    "@heroui/system": "^2.4.19",
     "@heroui/theme": "^2.4.19",
     "@heroui/toast": "^2.0.13",
-    "@radix-ui/react-label": "^2.1.7",
-    "@radix-ui/react-slot": "^1.2.3",
     "@tabler/icons-react": "^3.34.1",
     "@tailwindcss/vite": "^4.1.11",
     "@tsparticles/engine": "^3.8.1",
@@ -53,11 +49,7 @@
     "typescript-eslint": "^8.35.1",
     "vite": "^7.0.4"
   },
-  
   "engines": {
     "node": "20.12.2"
-  },
-  "packageManager": "pnpm@8.15.5"
-
-
+  }
 }
