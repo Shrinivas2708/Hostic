@@ -1,5 +1,6 @@
 // import { Button } from '@heroui/react';
 import lightSvg from "../assets/light.svg";
+import rocket from "../assets/rocket.svg";
 import { ContainerScroll } from "../components/ui/container-scroll-animation";
 import { Cover } from "../components/ui/cover";
 import video from "/6548176-hd_1920_1080_24fps.mp4";
@@ -34,10 +35,10 @@ const Landing = () => {
                 Build, preview, and ship modern frontend apps with lightning
                 speed. Just push your code and let us handle the rest.
               </p>
-              {token ? <div className="px-6 py-3 rounded-full bg-[#246BFD] text-white font-semibold shadow-[0_0_20px_rgba(36,107,253,0.4)] hover:shadow-[0_0_25px_rgba(36,107,253,0.8)] transition duration-300 flex gap-3 cursor-pointer" onClick={()=>navigate("/deploy")}>
-                
+              {token ? <div className="px-6 py-3 rounded-full bg-[#246BFD] text-white font-semibold shadow-[0_0_20px_rgba(36,107,253,0.4)] hover:shadow-[0_0_25px_rgba(36,107,253,0.8)] transition duration-300 flex gap-3 cursor-pointer" onClick={()=>navigate("/deployments")}>
+                 <img src={rocket} alt="" className=""/>
                 Start deploying
-              </div>: <div className="px-6 py-3 rounded-full bg-[#246BFD] text-white font-semibold shadow-[0_0_20px_rgba(36,107,253,0.4)] hover:shadow-[0_0_25px_rgba(36,107,253,0.8)] transition duration-300 flex gap-3 cursor-pointer" onClick={()=>navigate("/dashboard")}>
+              </div>: <div className="px-6 py-3 rounded-full bg-[#246BFD] text-white font-semibold shadow-[0_0_20px_rgba(36,107,253,0.4)] hover:shadow-[0_0_25px_rgba(36,107,253,0.8)] transition duration-300 flex gap-3 cursor-pointer " onClick={()=>navigate("/dashboard")}>
                 <img src={lightSvg} alt="" />
                 Get Started for Free
               </div> }

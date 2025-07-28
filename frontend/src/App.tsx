@@ -1,16 +1,18 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Navbar } from './components/Navbar';
-import Footer from './components/Footer';
-import { ProtectedRoute } from './routes/ProtectedRoute';
-import Landing from './pages/Landing';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import Dashboard from './pages/Dashboard';
-import { useAuthStore } from './store/authStore';
-import { useEffect, useRef } from 'react';
-import {ToastProvider} from "@heroui/toast";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Navbar } from "./components/Navbar";
+import Footer from "./components/Footer";
+import { ProtectedRoute } from "./routes/ProtectedRoute";
+import Landing from "./pages/Landing";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import Dashboard from "./pages/Dashboard";
+import { useAuthStore } from "./store/authStore";
+import { useEffect, useRef } from "react";
+import { ToastProvider } from "@heroui/toast";
+import DeploymentsPage from "./pages/DeploymentsPage";
+import DeploymentDetailsPage from "./pages/DeploymentsUpdatePage";
 // import { HeroUIProvider } from '@heroui/system';
-import Deploy from './pages/Deploy';
+// import Deploy from './pages/DeploymentsPage';
 function App() {
   const { token, user, fetchUser } = useAuthStore();
   const hasFetched = useRef(false);
@@ -25,15 +27,17 @@ function App() {
   return (
     <div className="relative min-h-screen bg-[#040B10] text-white overflow-hidden">
       {/* 💡 Background Glow Circles */}
-      <div className="absolute -top-72 -left-72 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-[#246BFD] opacity-40 rounded-full blur-[200px] z-0 pointer-events-none
-" />
-      <div className="absolute -bottom-72 -right-72 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-[#246BFD] opacity-20 rounded-full blur-[200px] z-0 pointer-events-none
-" />
+      <div
+        className="absolute -top-72 -left-72 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-[#246BFD] opacity-40 rounded-full blur-[200px] z-0 pointer-events-none
+"
+      />
+      <div
+        className="absolute -bottom-72 -right-72 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-[#246BFD] opacity-20 rounded-full blur-[200px] z-0 pointer-events-none
+"
+      />
 
       {/* 🔒 Main App */}
-     
-   
-      
+
       <BrowserRouter>
         <Navbar />
         <main className="relative z-10 flex-grow">
@@ -50,10 +54,18 @@ function App() {
               }
             />
             <Route
-              path="/deploy"
+              path="/deployments"
               element={
                 <ProtectedRoute>
-                  <Deploy />
+                  <DeploymentsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/deployments/:id"
+              element={
+                <ProtectedRoute>
+                  <DeploymentDetailsPage />
                 </ProtectedRoute>
               }
             />
@@ -61,8 +73,7 @@ function App() {
         </main>
         <Footer />
       </BrowserRouter>
-      <ToastProvider placement='top-center'/>
-  
+      <ToastProvider placement="top-center" />
     </div>
   );
 }

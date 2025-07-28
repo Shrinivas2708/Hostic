@@ -13,10 +13,11 @@ export const deploy = async (req: Request, res: Response, next: NextFunction) =>
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const { repo_url, project_type, buildCommands } = req.body as {
+    const { repo_url, project_type, buildCommands,installCommands } = req.body as {
       repo_url: string;
       project_type: ProjectType;
       buildCommands?: string;
+      installCommands?: string;
     };
 
     // Enforce user deployment quota
@@ -36,6 +37,7 @@ export const deploy = async (req: Request, res: Response, next: NextFunction) =>
       slug,
       projectType: project_type,
       buildCommands,
+      installCommands
     });
 
     // Create build row with short build_name
@@ -47,6 +49,7 @@ export const deploy = async (req: Request, res: Response, next: NextFunction) =>
     });
 
     try {
+      console.log(`${installCommands} && ${buildCommands}`)
       // Queue job for worker
       enqueueBuild({
         buildId: build.build_name,
@@ -55,7 +58,8 @@ export const deploy = async (req: Request, res: Response, next: NextFunction) =>
         repo_url,
         slug,
         project_type,
-        buildCommands,
+        buildCommands : buildCommands,
+        installCommands:installCommands
       });
     } catch (err) {
       // Roll back deployments_count if enqueue fails
@@ -104,6 +108,7 @@ export const redeploy = async (req: Request, res: Response, next: NextFunction) 
     });
 
     try {
+      console.log(`${deployment.installCommands} && ${deployment.buildCommands}`)
       // Queue job for worker with existing deployment details
       await enqueueBuild({
         buildId: build.build_name,
@@ -112,7 +117,8 @@ export const redeploy = async (req: Request, res: Response, next: NextFunction) 
         repo_url: deployment.repo_url,
         slug: deployment.slug,
         project_type: deployment.projectType,
-        buildCommands: deployment.buildCommands,
+      buildCommands : deployment.buildCommands,
+        installCommands:deployment.installCommands
       });
 
       res.json({
@@ -133,11 +139,24 @@ export const redeploy = async (req: Request, res: Response, next: NextFunction) 
 export const getDeployments = async (req: Request, res: Response, next: NextFunction)=>{
   const user_id = req.id;
  try {
-   const deployments = await Deployments.find({user_id})
+   const deployments = await Deployments.find({user_id}).select('_id slug')
    if(!deployments){
      res.status(401).json({meesage:"No deployments!"})
    }
    res.status(200).json({deployments})
+ } catch (error) {
+  next(error)
+ }
+}
+export const getDeployment = async (req: Request, res: Response, next: NextFunction)=>{
+  const user_id = req.id;
+  const {deployment_id} = req.query
+ try {
+   const deployment = await Deployments.findOne({_id:deployment_id,user_id:user_id})
+   if(!deployment){
+     res.status(401).json({meesage:"No deployments!"})
+   }
+   res.status(200).json({deployment})
  } catch (error) {
   next(error)
  }
@@ -155,3 +174,18 @@ export const deleteDeployment = async (req: Request, res: Response, next: NextFu
   next(error)
  }
 }
+export const getBuildsForDeployment = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const deployment_id = req.query.deployment_id as string;
+
+    if (!deployment_id) {
+      return res.status(400).json({ message: "deployment_id is required" });
+    }
+
+    const builds = await Builds.find({ deployment_id });
+
+    res.status(200).json({ builds });
+  } catch (error) {
+    next(error);
+  }
+};

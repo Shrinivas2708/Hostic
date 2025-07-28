@@ -36,7 +36,7 @@ export const Navbar = () => {
                 getInitials(user.username)
               )}
             </div>
-            <CTAButton className='bg-[#246BFD] px-2' onClick={()=> navigate("/deploy")}>Deploy</CTAButton>
+            <CTAButton className='bg-[#246BFD] px-2' onClick={()=> navigate("/deployments")}>Deploy</CTAButton>
             
           </>
         ) : (

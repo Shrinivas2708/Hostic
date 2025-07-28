@@ -1,9 +1,9 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
-// const local = 'http://localhost:5000/api'
-const dep = "https://hostit-1.onrender.com/api"
+// const url = 'http://localhost:5000/api'
+const url = "https://hostit-1.onrender.com/api"
 const instance = axios.create({
-  baseURL: dep,
+  baseURL: url,
 });
 
 instance.interceptors.request.use((config) => {

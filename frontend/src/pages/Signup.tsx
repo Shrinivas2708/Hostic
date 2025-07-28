@@ -20,13 +20,13 @@ function Signup() {
   const { error, loading, signup } = useAuth();
 
   const validatePassword = (value: string) => {
-    const hasUppercase = /[A-Z]/.test(value);
+    // const hasUppercase = /[A-Z]/.test(value);
     const hasNumber = /[0-9]/.test(value);
     const hasSpecialChar = /[^A-Za-z0-9]/.test(value);
     const isLongEnough = value.length > 6;
 
     if (!isLongEnough) return "Password must be at least 7 characters.";
-    if (!hasUppercase) return "Must contain at least one uppercase letter.";
+    // if (!hasUppercase) return "Must contain at least one uppercase letter.";
     if (!hasNumber) return "Must contain at least one number.";
     if (!hasSpecialChar) return "Must contain at least one special character.";
     return "";

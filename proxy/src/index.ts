@@ -48,10 +48,10 @@ function getOriginalHostname(req: Request): string {
   );
 }
 
-function extractSlug(hostname: string): string | null {
-  const suffix = ".apps.shriii.xyz";
-  return hostname.endsWith(suffix) ? hostname.slice(0, -suffix.length) : null;
-}
+// function extractSlug(hostname: string): string | null {
+//   const suffix = ".apps.shriii.xyz";
+//   return hostname.endsWith(suffix) ? hostname.slice(0, -suffix.length) : null;
+// }
 
 function resolveRequestedFile(reqPath: string): string {
   if (reqPath === "/") return "/index.html";
@@ -62,7 +62,8 @@ function resolveRequestedFile(reqPath: string): string {
 app.use(async (req: Request, res: Response) => {
   try {
     const hostname = getOriginalHostname(req);
-    const slug = extractSlug(hostname);
+    // const slug = extractSlug(hostname);
+    const slug = hostname.split(".")[0]
     console.log(`Incoming host=${hostname} slug=${slug}`);
 
     if (!slug) {

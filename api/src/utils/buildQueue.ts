@@ -9,6 +9,7 @@ export type BuildJob = {
   slug: string;
   project_type: ProjectType;
   buildCommands?: string;
+  installCommands?:string
 };
 
 const q: BuildJob[] = [];

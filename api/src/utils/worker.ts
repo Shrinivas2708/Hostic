@@ -3,120 +3,99 @@ import fs from "fs";
 import { Builds, BuildStatus } from "../model/Builds.model";
 import { Deployments } from "../model/Deployments.model";
 import { BuildJob } from "./buildQueue";
-import { makeBuildLogger, BuildLogger } from "./logger";
+import { makeBuildLogger } from "./logger";
 import { detectArtifactPath } from "./detectArtifactPath";
 import { getWorkDir } from "./getWorkDir";
 import { runStreamingDocker } from "./runStreaming";
 import { dockerCmd } from "./dockercmd";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import mime from "mime";
-import path from "path";
 import { publishLog } from "./pub";
 import { findProjectRoot } from "./findProjectRoot";
-
-// Configure S3 client for Cloudflare R2
-const s3Client = new S3Client({
-  region: "auto",
-  endpoint: process.env.R2_ENDPOINT,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
-  },
-});
-
-async function uploadDirectoryToR2(
-  localDir: string,
-  r2Prefix: string,
-  bucket: string,
-  logger: BuildLogger
-): Promise<void> {
-  const files = await fs.promises.readdir(localDir, { withFileTypes: true });
-
-  for (const file of files) {
-    const fullPath = path.join(localDir, file.name);
-    const relativePath = path.relative(localDir, fullPath);
-    const r2Key = path.join(r2Prefix, relativePath).replace(/\\/g, "/");
-
-    if (file.isDirectory()) {
-      await uploadDirectoryToR2(fullPath, r2Key, bucket, logger);
-    } else {
-      const fileContent = await fs.promises.readFile(fullPath);
-      const contentType = mime.getType(fullPath) || "application/octet-stream";
-
-      logger.log(`Uploading ${fullPath} to ${r2Key} (Content-Type: ${contentType})`);
-
-      try {
-        await s3Client.send(
-          new PutObjectCommand({
-            Bucket: bucket,
-            Key: r2Key,
-            Body: fileContent,
-            ContentType: contentType,
-          })
-        );
-        logger.log(`Successfully uploaded ${r2Key}`);
-      } catch (err: any) {
-        logger.error(`Failed to upload ${r2Key}: ${err.message}`);
-        throw err;
-      }
-    }
-  }
-}
+import uploadDirectoryToR2 from "./upload";
 
 export async function processJob(job: BuildJob): Promise<string[]> {
-  const { buildId, deploymentId, repo_url, slug, project_type, buildCommands } = job;
+  const {
+    buildId,
+    deploymentId,
+    repo_url,
+    slug,
+    project_type,
+    installCommands,
+    buildCommands,
+  } = job;
+
   const logger = makeBuildLogger(buildId);
   const startedAt = new Date();
   let workDir = "";
 
   try {
-    logger.log("🟢 processJob start");
-    logger.log(`repo_url=${repo_url} slug=${slug} type=${project_type}`);
+    logger.log(`🚀 Starting build process: buildId=${buildId}`);
+    logger.log(
+      `📦 Repo: ${repo_url} | Slug: ${slug} | Type: ${project_type} | Build Cmd: ${buildCommands}`
+    );
 
-    // Update Builds document by build_name
+    // Update Builds to "Building"
     const build = await Builds.findOneAndUpdate(
       { build_name: buildId },
       { status: BuildStatus.Building, startedAt },
       { new: true }
     );
-    if (!build) {
-      throw new Error(`Build with build_name ${buildId} not found`);
+    if (!build) throw new Error(`Build with build_name ${buildId} not found`);
+
+    // Prepare workspace
+    workDir = await getWorkDir(buildId);
+    logger.log(`📁 Workspace ready: ${workDir}`);
+
+    // Clone the repo
+    logger.log("📥 Cloning repository...");
+    await git().clone(repo_url, workDir);
+    logger.log("✅ Repository cloned successfully.");
+
+    // Step A: Install dependencies
+    logger.log("📄 Searching for package.json...");
+    const projectRoot = findProjectRoot(workDir);
+    if (!projectRoot) {
+      logger.error("⚠️ package.json not found. Cannot proceed.");
+      throw new Error("package.json not found in repository");
     }
 
-    workDir = await getWorkDir(buildId);
-    logger.log(`workspace ready: ${workDir}`);
-
-    logger.log("cloning repo...");
-    await git().clone(repo_url, workDir);
-    logger.log("clone done");
-
-    // Step A: install
-    const projectRoot = findProjectRoot(workDir);
-if (!projectRoot) throw new Error("package.json not found in repository");
-
-const installCmd = dockerCmd(projectRoot, "npm install", `install-${buildId}`);
-    logger.log("npm install step...");
+    const installCmd = dockerCmd(
+      projectRoot,
+      installCommands!,
+      `install-${buildId}`
+    );
+    logger.log("📦 Running install step inside Docker...");
     await runStreamingDocker(installCmd, logger);
+    logger.log("✅ Dependencies installed successfully.");
 
-    // Step B: build
+    // Step B: Run user build command
     const userBuild = buildCommands?.trim();
     const buildShell = userBuild || "npm run build";
     const buildCmd = dockerCmd(workDir, buildShell, `build-${buildId}`);
-    logger.log(`build step: ${buildShell}`);
+    logger.log(`🛠️ Running build step: "${buildShell}" inside Docker...`);
     await runStreamingDocker(buildCmd, logger);
+    logger.log("✅ Build step completed successfully.");
 
-    // Detect artifact output
+    // Step C: Detect artifact output
+    logger.log("🔍 Detecting build output artifacts...");
     const artifactPath = detectArtifactPath(workDir, project_type, logger);
-    if (!artifactPath) throw new Error("build output folder not found");
+    if (!artifactPath) {
+      logger.error("⚠️ Build output folder not found.");
+      throw new Error("build output folder not found");
+    }
+    logger.log(`📦 Artifacts found at: ${artifactPath}`);
 
     const r2KeyPrefix = `__output/${slug}/${buildId}/`;
-    logger.log(`Uploading artifacts from ${artifactPath} to R2: ${r2KeyPrefix}`);
+    logger.log(`☁️ Uploading artifacts to R2 at: ${r2KeyPrefix}`);
+    await uploadDirectoryToR2(
+      artifactPath,
+      r2KeyPrefix,
+      process.env.R2_BUCKET || "",
+      logger
+    );
+    logger.log("✅ Artifacts uploaded successfully.");
 
-    // Upload artifacts to R2
-    await uploadDirectoryToR2(artifactPath, r2KeyPrefix, process.env.R2_BUCKET || "", logger);
-
+    // Step D: Finalize build status
     const finishedAt = new Date();
-    // Update Builds document by build_name
     await Builds.findOneAndUpdate(
       { build_name: buildId },
       {
@@ -127,26 +106,40 @@ const installCmd = dockerCmd(projectRoot, "npm install", `install-${buildId}`);
       },
       { new: true }
     );
-    await Deployments.findByIdAndUpdate(deploymentId, { current_build_id: build._id });
 
-    logger.log("✅ Build succeeded.");
+    await Deployments.findByIdAndUpdate(deploymentId, {
+      current_build_id: build._id,
+    });
+
+    logger.log("🎉 Build process completed successfully.");
   } catch (err: any) {
     const errorMsg = `❌ Build failed: ${err?.message || err}`;
     logger.error(errorMsg);
-    await publishLog(buildId, errorMsg); // Ensure error is sent to clients
-    // Update Builds document by build_name
+
+    // Publish log to Redis (non-blocking for status update)
+    try {
+      await publishLog(buildId, errorMsg);
+    } catch (pubErr) {
+      console.error("⚠️ Failed to publish log to Redis:", pubErr);
+    }
+
     await Builds.findOneAndUpdate(
       { build_name: buildId },
-      { status: BuildStatus.Failed, finishedAt: new Date() },
+      {
+        status: BuildStatus.Failed,
+        finishedAt: new Date(),
+      },
       { new: true }
     );
   } finally {
+    // Cleanup workspace
     if (workDir && fs.existsSync(workDir)) {
-      logger.log("cleanup workspace...");
+      logger.log("🧹 Cleaning up workspace...");
       await fs.promises.rm(workDir, { recursive: true, force: true });
-      logger.log("workspace cleaned.");
+      logger.log("🧼 Workspace cleaned.");
     }
-    logger.log("🟣 processJob end");
+
+    logger.log("🏁 Build job complete.");
   }
 
   return logger.getLogs();

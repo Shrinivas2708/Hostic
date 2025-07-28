@@ -14,6 +14,7 @@ export interface IDeployment extends Document {
   projectType: ProjectType;
   current_build_id?: mongoose.Types.ObjectId | null;
   buildCommands?: string;
+  installCommands? : string;
 }
 
 const deploymentsSchema = new Schema<IDeployment>(
@@ -29,6 +30,7 @@ const deploymentsSchema = new Schema<IDeployment>(
     },
     current_build_id: { type: Schema.Types.ObjectId, ref: "Builds", default: null },
     buildCommands: { type: String, default: "" },
+    installCommands: { type: String, default: "" },
   },
   { timestamps: true }
 );

@@ -1,7 +1,6 @@
-const {heroui} = require('@heroui/theme');
+const { heroui } = require('@heroui/theme');
 
-// tailwind.config.js
-export default {
+module.exports = {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -9,12 +8,15 @@ export default {
   ],
   theme: {
   	extend: {
+		fontFamily: {
+        poppins: ["Poppins", "sans-serif"],
+      },
+  		borderRadius: {
+  			lg: 'var(--radius)',
+  			md: 'calc(var(--radius) - 2px)',
+  			sm: 'calc(var(--radius) - 4px)'
+  		},
   		colors: {
-  			dark: '#040B10',
-  			accent: {
-  				DEFAULT: 'hsl(var(--accent))',
-  				foreground: 'hsl(var(--accent-foreground))'
-  			},
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
@@ -37,6 +39,10 @@ export default {
   				DEFAULT: 'hsl(var(--muted))',
   				foreground: 'hsl(var(--muted-foreground))'
   			},
+  			accent: {
+  				DEFAULT: 'hsl(var(--accent))',
+  				foreground: 'hsl(var(--accent-foreground))'
+  			},
   			destructive: {
   				DEFAULT: 'hsl(var(--destructive))',
   				foreground: 'hsl(var(--destructive-foreground))'
@@ -51,25 +57,9 @@ export default {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			}
-  		},
-		 fontFamily: {
-        poppins: ['Poppins', 'sans-serif'],
-      },
-  		backgroundImage: {
-  			'radial-gradient': 'radial-gradient(var(--tw-gradient-stops))',
-  			'circle-bg': 'url(/src/assets/circles.svg)'
-  		},
-  		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
-  		},
-		boxShadow: {
-        input: `0px 2px 3px -1px rgba(0,0,0,0.1), 0px 1px 0px 0px rgba(25,28,33,0.02), 0px 0px 0px 1px rgba(25,28,33,0.08)`,
-      },
-  	},
-	
+  		}
+  	}
   },
   darkMode: ["class", "class"],
-  plugins: [require("tailwindcss-animate"),heroui()],
+  plugins: [require("tailwindcss-animate"), heroui()],
 };
