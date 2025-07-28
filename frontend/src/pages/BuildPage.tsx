@@ -29,7 +29,7 @@ function BuildPage() {
   useEffect(() => {
     if (!build || build.status !== "building" || !buildName) return;
 
-    const socket = new WebSocket("ws://localhost:9001"); // Replace with your backend WebSocket URL
+    const socket = new WebSocket("wss://socket.hostit.shriii.xyz"); // Replace with your backend WebSocket URL
     socketRef.current = socket;
 
     socket.onopen = () => {
