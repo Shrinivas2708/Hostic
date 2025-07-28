@@ -5,6 +5,19 @@ export type Deployments = {
   _id : string;
   slug : string
 }
+export enum BuildStatus {
+  Queued = "queued",
+  Building = "building",
+  Failed = "failed",
+  Success = "success",
+}
+export type Deployed = {
+   deployment_id: string,
+      build_id: string,
+      build_name: string,
+      slug:string,
+      status: BuildStatus.Queued,
+}
 export type Deployment = {
   _id: string;
   slug: string;
@@ -17,6 +30,12 @@ export type Deployment = {
   current_build_id: string
 };
 
+export type Data = {
+  repo_url: string;
+      project_type: string;
+      buildCommands: string;
+      installCommands: string;
+}
 export type Build = {
   _id: string;
   build_name: string;
@@ -33,13 +52,16 @@ type DeployStore = {
   builds: Build[];
   selectedDeployment: Deployment | null;
   deployment: Deployment | null;
+  build: Build | null;
+  deployed : Deployed | null ;
   fetchDeployments: () => Promise<void>;
   fetchBuilds: (deployment_id: string) => Promise<void>;
   selectDeployment: (d: Deployment) => void;
-  createDeployment: (data: Omit<Deployment, '_id' | 'createdAt'>) => Promise<void>;
+  createDeployment: (data: Data) => Promise<void>;
   redeploy: (slug: string) => Promise<void>;
   deleteDeployment: (slug: string) => Promise<void>;
   fetchDeployment: (deployment_id: string) => Promise<void>;
+  fetchBuild : (slug:string) => Promise<void>;
 };
 
 export const useDeployStore = create<DeployStore>((set) => ({
@@ -47,7 +69,8 @@ export const useDeployStore = create<DeployStore>((set) => ({
   builds: [],
   selectedDeployment: null,
   deployment : null ,
-
+  build : null,
+  deployed : null,
   fetchDeployments: async () => {
     const res = await axios.get('/host/');
     set({ deployments: res.data.deployments });
@@ -56,22 +79,22 @@ fetchDeployment: async (deployment_id: string) => {
   const res = await axios.get(`/host/deployment?deployment_id=${deployment_id}`);
    if (!res.data.deployment) throw new Error("Deployment not found");
   set({ deployment: res.data.deployment });
-}
-,
+},
   fetchBuilds: async (deployment_id) => {
     const res = await axios.get(`/host/builds?deployment_id=${deployment_id}`);
     set({ builds: res.data.builds });
   },
-
+  fetchBuild: async (build_name : string) => {
+    const res = await axios.get(`/host/build?build_name=${build_name}`)
+    set({build : res.data.build})
+  },
   selectDeployment: (deployment) => {
     set({ selectedDeployment: deployment });
   },
 
   createDeployment: async (data) => {
-    const res = await axios.post('/deploy', data);
-    set((state) => ({
-      deployments: [...state.deployments, res.data.deployment],
-    }));
+    const res = await axios.post('/host/', data);
+    set({deployment:res.data});
   },
 
   redeploy: async (deployment_id) => {

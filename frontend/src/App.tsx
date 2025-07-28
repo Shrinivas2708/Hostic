@@ -11,8 +11,11 @@ import { useEffect, useRef } from "react";
 import { ToastProvider } from "@heroui/toast";
 import DeploymentsPage from "./pages/DeploymentsPage";
 import DeploymentDetailsPage from "./pages/DeploymentsUpdatePage";
+import BuildPage from "./pages/BuildPage";
+import Deploy from "./pages/Deploy";
 // import { HeroUIProvider } from '@heroui/system';
 // import Deploy from './pages/DeploymentsPage';
+
 function App() {
   const { token, user, fetchUser } = useAuthStore();
   const hasFetched = useRef(false);
@@ -25,18 +28,10 @@ function App() {
   }, [token, user, fetchUser]);
 
   return (
-    <div className="relative min-h-screen bg-[#040B10] text-white overflow-hidden">
+    <div className="relative flex flex-col min-h-screen bg-[#040B10] text-white overflow-hidden">
       {/* 💡 Background Glow Circles */}
-      <div
-        className="absolute -top-72 -left-72 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-[#246BFD] opacity-40 rounded-full blur-[200px] z-0 pointer-events-none
-"
-      />
-      <div
-        className="absolute -bottom-72 -right-72 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-[#246BFD] opacity-20 rounded-full blur-[200px] z-0 pointer-events-none
-"
-      />
-
-      {/* 🔒 Main App */}
+      <div className="absolute -top-72 -left-72 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-[#246BFD] opacity-40 rounded-full blur-[200px] z-0 pointer-events-none" />
+      <div className="absolute -bottom-72 -right-72 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-[#246BFD] opacity-20 rounded-full blur-[200px] z-0 pointer-events-none" />
 
       <BrowserRouter>
         <Navbar />
@@ -69,13 +64,31 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/deployments/:id/:buildName"
+              element={
+                <ProtectedRoute>
+                  <BuildPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/deploy"
+              element={
+                <ProtectedRoute>
+                  <Deploy />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </main>
         <Footer />
       </BrowserRouter>
+
       <ToastProvider placement="top-center" />
     </div>
   );
 }
+
 
 export default App;

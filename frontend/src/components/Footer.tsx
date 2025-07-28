@@ -28,7 +28,7 @@ const social = [
 
 function Footer() {
   return (
-    <div className="p-5 border-t text-center text-[#666666] border-white/10 flex items-center justify-evenly md:flex-row flex-col">
+    <div className="p-5 border-t text-center text-[#666666] border-white/10 flex items-center justify-evenly md:flex-row flex-col w-full">
       Made with {"<3"} by Shri
       <div className="flex justify-center items-center gap-4 mt-3">
         {social.map((item, index) => (

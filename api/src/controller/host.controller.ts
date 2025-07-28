@@ -161,6 +161,20 @@ export const getDeployment = async (req: Request, res: Response, next: NextFunct
   next(error)
  }
 }
+
+export const getBuild = async (req: Request, res: Response, next: NextFunction)=>{
+ 
+  const {build_name} = req.query
+ try {
+   const build = await Builds.findOne({build_name})
+   if(!build){
+     res.status(401).json({meesage:"No deployments!"})
+   }
+   res.status(200).json({build})
+ } catch (error) {
+  next(error)
+ }
+}
 export const deleteDeployment = async (req: Request, res: Response, next: NextFunction)=>{
   const user_id = req.id;
   const {deployment_id} = req.body

@@ -46,7 +46,7 @@ export default function DeploymentDetailsPage() {
     return <div className="text-center mt-10">Deployment not found.</div>;
 
   return (
-    <div className=" py-5 border flex justify-evenly md:flex-row flex-col">
+    <div className=" py-5  flex justify-evenly md:flex-row flex-col">
       <div className=" flex flex-col gap-3 p-3 text-lg font-medium">
         <p className="text-xl text-center font-bold ">{deployment.slug}</p>
         <p>
@@ -105,15 +105,17 @@ export default function DeploymentDetailsPage() {
         </div>
       </div>
 
-      <div className="border">
-        <h2 className="text-2xl font-semibold mt-6">Builds</h2>
+      <div >
+        <h2 className="text-3xl font-semibold mt-6">Builds</h2>
         {builds.length === 0 ? (
           <p>No builds found.</p>
         ) : (
-          <ul className="mt-2 space-y-2 ">
+          <ul className="mt-2 space-y-2  ">
             {builds.reverse().map((build) => (
-              <li key={build._id}>
-                <div className="p-2 rounded border">
+              <li key={build._id} className="cursor-pointer" onClick={()=>{
+                navigate(`/deployments/${deployment._id}/${build.build_name}`)
+              }}>
+                <div className="p-4 rounded-lg border border-white/10 ">
                   <div className="flex items-center gap-2">
                     <strong>{build.build_name}</strong>
                     <span
