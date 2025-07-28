@@ -57,7 +57,7 @@ type DeployStore = {
   fetchDeployments: () => Promise<void>;
   fetchBuilds: (deployment_id: string) => Promise<void>;
   selectDeployment: (d: Deployment) => void;
-  createDeployment: (data: Data) => Promise<void>;
+  createDeployment: (data: Data) => Promise<Deployed>;
   redeploy: (slug: string) => Promise<void>;
   deleteDeployment: (slug: string) => Promise<void>;
   fetchDeployment: (deployment_id: string) => Promise<void>;
@@ -93,9 +93,10 @@ fetchDeployment: async (deployment_id: string) => {
   },
 
   createDeployment: async (data) => {
-    const res = await axios.post('/host/', data);
-    set({deployment:res.data});
-  },
+  const res = await axios.post("/host/", data);
+  set({ deployed: res.data }); // you were probably doing this already
+  return res.data as Deployed; // ← this is the key fix!
+},
 
   redeploy: async (deployment_id) => {
   const res = await axios.post('/host/redeploy', { deployment_id });

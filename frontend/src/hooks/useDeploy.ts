@@ -1,6 +1,7 @@
 import { isAxiosError } from "axios";
 import { useState } from "react";
 import { useDeployStore } from "../store/deployStore";
+import type { Deployed } from "../store/deployStore";
 
 export const useDeploy = () => {
   const {
@@ -55,13 +56,13 @@ export const useDeploy = () => {
     success,
     deployed,
     selectDeployment,
-    fetchDeployment: (id:string) => safeCall(()=> fetchDeployment(id)),
+    fetchDeployment: (id: string) => safeCall(() => fetchDeployment(id)),
     fetchDeployments: () => safeCall(fetchDeployments),
     fetchBuilds: (id: string) => safeCall(() => fetchBuilds(id)),
     createDeployment: (data: Parameters<typeof createDeployment>[0]) =>
-      safeCall(() => createDeployment(data)),
+      safeCall<Deployed>(() => createDeployment(data)), // ✅ Typed return
     redeploy: (id: string) => safeCall(() => redeploy(id)),
     deleteDeployment: (slug: string) => safeCall(() => deleteDeployment(slug)),
-    fetchBuild: (build_name:string) => safeCall(()=> fetchBuild(build_name))
+    fetchBuild: (build_name: string) => safeCall(() => fetchBuild(build_name))
   };
 };

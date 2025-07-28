@@ -70,12 +70,12 @@ export default function DeploymentsPage() {
           </p>
         )}
       </div>
-
-      <div className="md:px-10 grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1">
-        {deployments.map((v: Deployments) => (
+{deployments.length === 0 ? <div className="text-center">No deployments</div> :<div className="md:px-10 grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1">
+        { deployments.map((v: Deployments) => (
           <DeploymentsCard data={v} key={v._id} />
         ))}
-      </div>
+      </div>}
+      
     </div>
   );
 }

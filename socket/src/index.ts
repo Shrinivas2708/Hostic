@@ -1,3 +1,4 @@
+require('dotenv').config()
 import { Server } from "socket.io";
 import { subscribeLogs, subClient } from "./utils/sub";
 
@@ -6,7 +7,6 @@ const io = new Server(9001, {
     origin: "*", // Adjust for production (e.g., specific origins)
   },
 });
-
 io.on("connection", (socket) => {
   const buildId = socket.handshake.query.buildId as string;
 
