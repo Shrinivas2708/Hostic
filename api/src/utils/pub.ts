@@ -1,9 +1,8 @@
 import { createClient } from "redis";
 
 const pubClient = createClient({
-  url: process.env.REDIS_URL, // e.g., rediss://user:pass@host:port
+  url: process.env.REDIS_URL,
 });
-console.log(process.env.REDIS_URL)
 pubClient.on("error", (err) => console.error("❌ Redis Pub Error:", err));
 pubClient.on("end", () => console.log("Redis Pub connection ended, attempting reconnect..."));
 pubClient.on("reconnecting", () => console.log("Redis Pub reconnecting..."));
