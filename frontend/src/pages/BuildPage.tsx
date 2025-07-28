@@ -1,8 +1,9 @@
 import { useParams } from "react-router-dom";
 import { useDeploy } from "../hooks/useDeploy";
 import { formatDate } from "../exports";
-import  { useEffect, useRef, useState } from "react";
-
+import  { useEffect, useState } from "react";
+import url from "../lib/socket";
+import { io } from "socket.io-client";
 const statusStyles: Record<string, string> = {
   queued: "text-yellow-300 border border-yellow-300",
   building: "text-blue-300 border border-blue-300",
@@ -24,32 +25,38 @@ function BuildPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
   const [logs, setLogs] = useState<string[]>([]);
-  const socketRef = useRef<WebSocket | null>(null);
+  // const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     if (!build || build.status !== "building" || !buildName) return;
 
-    const socket = new WebSocket("wss://socket.hostit.shriii.xyz"); // Replace with your backend WebSocket URL
-    socketRef.current = socket;
+     const socket = io(url, {
+    query: {
+      buildId: buildName,
+    },
+    transports: ["websocket"], // enforce WebSocket transport
+  });
+   
 
-    socket.onopen = () => {
-      socket.send(JSON.stringify({ buildName }));
-    };
+     socket.on("log", (data) => {
+    setLogs((prev) => [...prev, data]);
+  });
 
-    socket.onmessage = (event) => {
-      setLogs((prev) => [...prev, event.data]);
-    };
+  socket.on("connect", () => {
+    console.log("Connected to WebSocket logs");
+  });
 
-    socket.onerror = (err) => {
-      console.error("WebSocket error:", err);
-    };
+  socket.on("disconnect", () => {
+    console.log("Disconnected from WebSocket logs");
+  });
 
-    socket.onclose = () => {
-      console.log("WebSocket connection closed");
-    };
+  socket.on("error", (err) => {
+    console.error("Socket error:", err);
+  });
+
 
     return () => {
-      socket.close();
+      socket.disconnect();
     };
   }, [build, buildName]);
 

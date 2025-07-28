@@ -84,7 +84,7 @@ export default function DeploymentDetailsPage() {
         <div className="py-3 flex gap-3  items-center ">
           <span
             className="p-2 border-white border w-[100px] text-center rounded-lg hover:bg-white cursor-pointer text-sm transition duration-300 text-white hover:text-black"
-            onClick={() => window.open(`https://www.${deployment.slug}.apps.shriii.xyz`)}
+            onClick={() => window.open(`http://${deployment.slug}.localhost:8080`)}
           >
             Visit
           </span>
