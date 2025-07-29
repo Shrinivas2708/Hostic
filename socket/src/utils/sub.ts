@@ -17,26 +17,30 @@ subClient.on("reconnecting", () => console.log("Redis Sub reconnecting..."));
 })();
 
 // Updated subscribeLogs with proper arguments
-export function subscribeLogs(buildId: string, onMessage: (msg: string) => void): Promise<void> {
-  return new Promise((resolve, reject) => {
-    subClient
-      .subscribe(`logs:${buildId}`, (message, channel) => {
-        // The order of arguments might vary by Redis client version; adjust if needed
-        if (channel === `logs:${buildId}`) {
-          try {
-            onMessage(message);
-          } catch (err:any) {
-            console.error(`Error processing message on ${channel}: ${err.message}`);
-          }
-        }
-      })
-      .then(() => {
-        console.log(`Subscribed to Redis channel: logs:${buildId}`);
-        resolve();
-      })
-      .catch((err) => {
-        console.error(`Failed to subscribe to logs:${buildId}: ${err.message}`);
-        reject(err);
-      });
+export async function subscribeLogs(buildId: string, onMessage: (msg: string) => void) {
+  const pattern = `logs:${buildId}`;
+  await subClient.pSubscribe(pattern, (message, channel) => {
+    if (channel === pattern) {
+      try {
+        onMessage(message);
+      } catch (err: any) {
+        console.error(`❌ Error processing log message: ${err.message}`);
+      }
+    }
   });
+  console.log(`✅ Subscribed to ${pattern}`);
+}
+
+export async function subscribeStatus(buildId: string, onMessage: (msg: string) => void) {
+  const pattern = `status:${buildId}`;
+  await subClient.pSubscribe(pattern, (message, channel) => {
+    if (channel === pattern) {
+      try {
+        onMessage(message);
+      } catch (err: any) {
+        console.error(`❌ Error processing status message: ${err.message}`);
+      }
+    }
+  });
+  console.log(`✅ Subscribed to ${pattern}`);
 }

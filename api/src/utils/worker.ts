@@ -8,7 +8,7 @@ import { detectArtifactPath } from "./detectArtifactPath";
 import { getWorkDir } from "./getWorkDir";
 import { runStreamingDocker } from "./runStreaming";
 import { dockerCmd } from "./dockercmd";
-import { publishLog } from "./pub";
+import { publishLog, publishStatus } from "./pub";
 import { findProjectRoot } from "./findProjectRoot";
 import uploadDirectoryToR2 from "./upload";
 
@@ -28,6 +28,8 @@ export async function processJob(job: BuildJob): Promise<string[]> {
   let workDir = "";
 
   try {
+     await publishStatus(buildId, BuildStatus.Building);
+
     logger.log(`🚀 Starting build`);
     logger.log(
       `📦 Repo: ${repo_url} | Slug: ${slug} | Type: ${project_type} | Build Cmd: ${buildCommands}`
@@ -90,7 +92,7 @@ export async function processJob(job: BuildJob): Promise<string[]> {
     await uploadDirectoryToR2(
       artifactPath,
       r2KeyPrefix,
-      process.env.R2_BUCKET || "",
+      process.env.R2_BUCKET!,
       logger
     );
     logger.log("✅ Build uploaded successfully.");
@@ -111,10 +113,12 @@ export async function processJob(job: BuildJob): Promise<string[]> {
     await Deployments.findByIdAndUpdate(deploymentId, {
       current_build_id: build._id,
     });
+    await publishStatus(buildId, BuildStatus.Success);
 
     logger.log("🎉 Build process completed successfully.");
   } catch (err: any) {
     const errorMsg = `❌ Build failed: ${err?.message || err}`;
+    await publishStatus(buildId, BuildStatus.Failed);
     logger.error(errorMsg);
 
     // Publish log to Redis (non-blocking for status update)

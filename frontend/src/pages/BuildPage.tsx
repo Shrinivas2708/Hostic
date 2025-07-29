@@ -1,4 +1,4 @@
-import {  useParams } from "react-router-dom";
+import {  useNavigate, useParams } from "react-router-dom";
 import { useDeploy } from "../hooks/useDeploy";
 import { formatDate } from "../exports";
 import  { useEffect, useState } from "react";
@@ -13,10 +13,11 @@ const statusStyles: Record<string, string> = {
 
 function BuildPage() {
   const { buildName,id } = useParams();
+  const navigate = useNavigate()
   const { build, deployment,fetchDeployment,fetchBuild } = useDeploy();
  
 //   console.log(currentBuild)
-  console.log(build)
+  // console.log(build)
    useEffect(() => {
     if (buildName && id) {
       fetchDeployment(id);
@@ -25,6 +26,8 @@ function BuildPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
   const [logs, setLogs] = useState<string[]>([]);
+  
+  const [liveStatus, setLiveStatus] = useState<string | null>(null);
   // const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -36,14 +39,29 @@ function BuildPage() {
     },
     transports: ["websocket"], // enforce WebSocket transport
   });
-   
+   socket.on("status", (status: string) => {
+  console.log("Status update:", status);
+  setLiveStatus(status);
+
+  if (status === "success") {
+    setTimeout(() => {
+      navigate(`/deployments/${id}`);
+    }, 2000);
+  }
+
+ 
+
+  if (status === "queued") {
+    setLogs(["Build is queued..."]);
+  }
+});
+
+
 
      socket.on("log", (data) => {
     setLogs((prev) => [...prev, data]);
   });
-  socket.on("complete",(data)=>{
-    console.log(data)
-  })
+  
 
   socket.on("connect", () => {
     console.log("Connected to WebSocket logs");
@@ -75,11 +93,11 @@ function BuildPage() {
           </p>
           <p>
             <span className="text-lg text-[#918f8f]">Status: </span>
-            <span
-              className={`text-xs px-2 py-1 rounded-full capitalize ${statusStyles[build?.status || ""] || "bg-gray-100 text-gray-700"}`}
-            >
-              {build?.status}
-            </span>
+            <span className={`text-xs px-2 py-1 rounded-full capitalize ${statusStyles[liveStatus || build?.status || ""]}`}>
+  {liveStatus || build?.status}
+</span>
+
+
           </p>
 
           <p>
@@ -99,15 +117,19 @@ function BuildPage() {
 
         <div className="border w-1/2 p-4 rounded-lg bg-black text-green-300 font-mono text-sm overflow-y-auto max-h-[400px]">
           <p className="font-bold text-white mb-2">Logs</p>
-          {build?.status === "building" ? (
-            logs.length > 0 ? (
-              <pre>{logs.join("\n")}</pre>
-            ) : (
-              <p className="text-gray-500">Waiting for logs...</p>
-            )
-          ) : (
-            <p className="text-gray-500">Logs only available while building.</p>
-          )}
+          {liveStatus === "building" ? (
+  logs.length > 0 ? (
+    <pre>{logs.join("\n")}</pre>
+  ) : (
+    <p className="text-gray-500">Waiting for logs...</p>
+  )
+) : liveStatus === "queued" ? (
+  <p className="text-gray-500">Build is queued...</p>
+) : (
+  <p className="text-gray-500">Logs only available while building.</p>
+)}
+
+
         </div>
       </div>
     </div>

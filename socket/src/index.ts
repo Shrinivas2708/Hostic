@@ -1,6 +1,6 @@
 require('dotenv').config()
 import { Server } from "socket.io";
-import { subscribeLogs, subClient } from "./utils/sub";
+import { subscribeLogs, subClient, subscribeStatus } from "./utils/sub";
 
 const io = new Server(9001, {
   cors: {
@@ -30,7 +30,12 @@ io.on("connection", (socket) => {
       socket.emit("error", `Failed to subscribe to build logs for ${buildId}`);
     }
   });
-
+  subscribeStatus(buildId, (status) => {
+  if (socket.connected) {
+    console.log(`Status update: ${status}`);
+    socket.emit("status", status);
+  }
+});
   socket.emit("message", `Connected to build logs for ${buildId}`);
 
   socket.on("disconnect", () => {

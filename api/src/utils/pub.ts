@@ -1,4 +1,5 @@
 import { createClient } from "redis";
+import { BuildStatus } from "../model/Builds.model";
 
 const pubClient = createClient({
   url: process.env.REDIS_URL,
@@ -24,11 +25,12 @@ export async function publishLog(buildId: string, message: string) {
     throw err; // Allow caller to handle or retry
   }
 }
-export async function publishSuccess(buildId: string, success: boolean) {
+// pub.ts
+export async function publishStatus(buildId: string, status: BuildStatus.Queued | BuildStatus.Building |BuildStatus.Success| BuildStatus.Failed) {
   try {
-    const status = success ? "success" : "failed";
     await pubClient.publish(`status:${buildId}`, status);
   } catch (err: any) {
     console.error(`Failed to publish status to status:${buildId}: ${err.message}`);
   }
 }
+
