@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import {  useParams } from "react-router-dom";
 import { useDeploy } from "../hooks/useDeploy";
 import { formatDate } from "../exports";
 import  { useEffect, useState } from "react";
@@ -41,6 +41,9 @@ function BuildPage() {
      socket.on("log", (data) => {
     setLogs((prev) => [...prev, data]);
   });
+  socket.on("complete",(data)=>{
+    console.log(data)
+  })
 
   socket.on("connect", () => {
     console.log("Connected to WebSocket logs");

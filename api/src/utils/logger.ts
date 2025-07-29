@@ -16,7 +16,6 @@ export function makeBuildLogger(buildId: string): BuildLogger {
     console.log(line);
     publishLog(buildId, line).catch((err) => {
       console.error(`Failed to publish log for buildId ${buildId}: ${err.message}`);
-      // Optionally re-queue the log or notify the system (e.g., via a fallback mechanism)
     });
   };
 

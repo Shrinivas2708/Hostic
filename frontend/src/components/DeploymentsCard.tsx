@@ -2,36 +2,37 @@ import { useNavigate } from "react-router-dom";
 import type {  Deployments } from "../store/deployStore";
 import { CardBody, CardContainer, CardItem } from "./ui/3d-card";
 
-function DeploymentsCard({ data  }: { data: Deployments }) {
- 
-  const navigate = useNavigate()
+function DeploymentsCard({ data }: { data: Deployments }) {
+  const navigate = useNavigate();
+
   return (
-    <div onClick={()=> navigate(`/deployments/${data._id}`)}>
-      <CardContainer  >
-      <CardBody>
-        <CardItem as={"div"} className="border p-5 border-[#31425F] rounded-xl cursor-pointer  w-full flex flex-col" >
-          <CardItem as={"div"} className="w-[100%]" translateZ="100">
-            <img
-              src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2560&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-              className=" h-[200px] w-full object-cover border rounded-xl border-white/10 mb-5 bg-white/10"
-              alt=""
-            />
-          </CardItem>
-          <CardItem as={"div"}>
-            <CardItem as="p" translateZ="60" className="text-base ">
-              <CardItem
-                as={"span"}
-                translateZ="60"
-                className="text-lg text-[#918f8f]"
-              >
-                Website name:{" "}
-              </CardItem>
-              {data.slug}
+    <div
+      onClick={() => navigate(`/deployments/${data._id}`)}
+      className="w-full cursor-pointer"
+    >
+      <CardContainer>
+        <CardBody className=" max-w-sm h-auto ">
+          <CardItem
+            as={"div"}
+            className="border border-[#31425F] rounded-xl w-full flex flex-col "
+          >
+            <CardItem as={"div"} className="w-full" translateZ="100">
+              <img
+                src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=2560&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                className="h-[200px] w-full object-cover rounded-t-xl border-b border-white/10"
+                alt=""
+              />
+            </CardItem>
+
+            <CardItem as={"div"} className="p-4" translateZ="60">
+              <p className="text-sm text-slate-400">Website name:</p>
+              <p className="text-md font-semibold text-white break-words">
+                {data.slug}
+              </p>
             </CardItem>
           </CardItem>
-        </CardItem>
-      </CardBody>
-    </CardContainer>
+        </CardBody>
+      </CardContainer>
     </div>
   );
 }

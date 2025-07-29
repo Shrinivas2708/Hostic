@@ -2,7 +2,7 @@ import { ProjectType } from "../model/Deployments.model";
 import { processJob } from "./worker";
 
 export type BuildJob = {
-  buildId: string; // Now the short build_name (e.g., "julpq")
+  buildId: string; 
   deploymentId: string;
   userId: string;
   repo_url: string;

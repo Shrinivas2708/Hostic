@@ -11,14 +11,11 @@ import { Builds, BuildStatus } from "./model/Builds.model";
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-const BASE_PATH =
-  "https://2b086fbe3c7ee18f666646ea5178c5e2.r2.cloudflarestorage.com";
-const MONGODB_URI =
-  process.env.DATABASE_URL || "mongodb://localhost:27017/your-db";
+const BASE_PATH = process.env.BASE_PATH;
+const MONGODB_URI =process.env.DATABASE_URL;
 const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY;
 const R2_SECRET_KEY = process.env.R2_SECRET_KEY;
-const R2_BUCKET = process.env.R2_BUCKET || "hostit";
-console.log(R2_ACCESS_KEY, R2_SECRET_KEY);
+const R2_BUCKET = process.env.R2_BUCKET ;
 const PUBLIC_PATH = path.resolve(__dirname, "..", "public");
 
 if (!R2_ACCESS_KEY || !R2_SECRET_KEY) {
@@ -26,7 +23,9 @@ if (!R2_ACCESS_KEY || !R2_SECRET_KEY) {
     "Missing R2_ACCESS_KEY or R2_SECRET_KEY environment variables"
   );
 }
-
+if(!MONGODB_URI){
+  throw new Error("Missing Mongo URI!!")
+}
 const s3Client = new S3Client({
   region: "auto",
   endpoint: BASE_PATH,
@@ -72,6 +71,7 @@ app.use(async (req: Request, res: Response) => {
     }
 
     const deployment: IDeployment | null = await Deployments.findOne({ slug });
+    console.log("Deployment Found = " + deployment)
     if (!deployment?.current_build_id) {
       console.log(`Deployment not found for slug: ${slug}`);
       res.status(404).sendFile(path.join(PUBLIC_PATH, "404.html"));

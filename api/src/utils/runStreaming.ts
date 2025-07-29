@@ -2,7 +2,7 @@
 import { spawn } from "child_process";
 import type { BuildLogger } from "./logger";
 
-/**
+/*
  * Spawn docker (argv form) and stream stdout/stderr chunks to logger.
  * We split on newlines but also emit partial lines so progress bars show.
  */

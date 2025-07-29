@@ -28,7 +28,7 @@ export async function processJob(job: BuildJob): Promise<string[]> {
   let workDir = "";
 
   try {
-    logger.log(`🚀 Starting build process: buildId=${buildId}`);
+    logger.log(`🚀 Starting build`);
     logger.log(
       `📦 Repo: ${repo_url} | Slug: ${slug} | Type: ${project_type} | Build Cmd: ${buildCommands}`
     );
@@ -43,7 +43,8 @@ export async function processJob(job: BuildJob): Promise<string[]> {
 
     // Prepare workspace
     workDir = await getWorkDir(buildId);
-    logger.log(`📁 Workspace ready: ${workDir}`);
+    // logger.log(`📁 Workspace ready: ${workDir}`);
+    logger.log(`📁 Workspace ready to install and build`);
 
     // Clone the repo
     logger.log("📥 Cloning repository...");
@@ -63,7 +64,7 @@ export async function processJob(job: BuildJob): Promise<string[]> {
       installCommands!,
       `install-${buildId}`
     );
-    logger.log("📦 Running install step inside Docker...");
+    logger.log("📦 Installing dependencies");
     await runStreamingDocker(installCmd, logger);
     logger.log("✅ Dependencies installed successfully.");
 
@@ -76,7 +77,7 @@ export async function processJob(job: BuildJob): Promise<string[]> {
     logger.log("✅ Build step completed successfully.");
 
     // Step C: Detect artifact output
-    logger.log("🔍 Detecting build output artifacts...");
+    // logger.log("🔍 Detecting build output artifacts...");
     const artifactPath = detectArtifactPath(workDir, project_type, logger);
     if (!artifactPath) {
       logger.error("⚠️ Build output folder not found.");
@@ -85,14 +86,14 @@ export async function processJob(job: BuildJob): Promise<string[]> {
     logger.log(`📦 Artifacts found at: ${artifactPath}`);
 
     const r2KeyPrefix = `__output/${slug}/${buildId}/`;
-    logger.log(`☁️ Uploading artifacts to R2 at: ${r2KeyPrefix}`);
+    logger.log(`☁️ Uploading output for ${slug} `);
     await uploadDirectoryToR2(
       artifactPath,
       r2KeyPrefix,
       process.env.R2_BUCKET || "",
       logger
     );
-    logger.log("✅ Artifacts uploaded successfully.");
+    logger.log("✅ Build uploaded successfully.");
 
     // Step D: Finalize build status
     const finishedAt = new Date();

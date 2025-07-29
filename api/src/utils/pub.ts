@@ -24,3 +24,11 @@ export async function publishLog(buildId: string, message: string) {
     throw err; // Allow caller to handle or retry
   }
 }
+export async function publishSuccess(buildId: string, success: boolean) {
+  try {
+    const status = success ? "success" : "failed";
+    await pubClient.publish(`status:${buildId}`, status);
+  } catch (err: any) {
+    console.error(`Failed to publish status to status:${buildId}: ${err.message}`);
+  }
+}

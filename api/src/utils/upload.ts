@@ -30,7 +30,7 @@ export default async function uploadDirectoryToR2(
       const fileContent = await fs.promises.readFile(fullPath);
       const contentType = mime.getType(fullPath) || "application/octet-stream";
 
-      logger.log(`Uploading ${fullPath} to ${r2Key} (Content-Type: ${contentType})`);
+      // logger.log(`Uploading ${fullPath} to ${r2Key} (Content-Type: ${contentType})`);
 
       try {
         await s3Client.send(
@@ -41,7 +41,7 @@ export default async function uploadDirectoryToR2(
             ContentType: contentType,
           })
         );
-        logger.log(`Successfully uploaded ${r2Key}`);
+        // logger.log(`Successfully uploaded ${r2Key}`);
       } catch (err: any) {
         logger.error(`Failed to upload ${r2Key}: ${err.message}`);
         throw err;

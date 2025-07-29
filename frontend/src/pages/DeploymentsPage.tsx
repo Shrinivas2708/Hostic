@@ -70,7 +70,11 @@ export default function DeploymentsPage() {
           </p>
         )}
       </div>
-{deployments.length === 0 ? <div className="text-center">No deployments</div> :<div className="md:px-10 grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1">
+{deployments.length === 0 ? <div className="text-center">No deployments</div> :<div className="px-4 md:px-10 grid gap-4 "
+     style={{
+       display: "grid",
+       gridTemplateColumns: "repeat(auto-fit, minmax(384px, 1fr))",
+     }}>
         { deployments.map((v: Deployments) => (
           <DeploymentsCard data={v} key={v._id} />
         ))}

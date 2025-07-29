@@ -21,7 +21,8 @@ io.on("connection", (socket) => {
   subscribeLogs(buildId, (msg) => {
     if (socket.connected) {
       console.log(`Sending log to client for buildId: ${buildId}: ${msg}`);
-      socket.emit("log", msg); // Emit 'log' event to the client
+      socket.emit("log", msg); 
+      socket.emit("complete")
     }
   }).catch((err) => {
     console.error(`Subscription failed for logs:${buildId}: ${err.message}`);
@@ -30,7 +31,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.emit("message", `Connected to build logs for ${buildId}`); // Initial message
+  socket.emit("message", `Connected to build logs for ${buildId}`);
 
   socket.on("disconnect", () => {
     console.log(`Client disconnected for buildId: ${buildId}`);
