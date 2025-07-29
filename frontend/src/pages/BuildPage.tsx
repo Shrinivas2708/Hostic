@@ -1,7 +1,7 @@
-import {  useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useDeploy } from "../hooks/useDeploy";
 import { formatDate } from "../exports";
-import  { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import url from "../lib/socket";
 import { io } from "socket.io-client";
 const statusStyles: Record<string, string> = {
@@ -12,13 +12,13 @@ const statusStyles: Record<string, string> = {
 };
 
 function BuildPage() {
-  const { buildName,id } = useParams();
-  const navigate = useNavigate()
-  const { build, deployment,fetchDeployment,fetchBuild } = useDeploy();
- 
-//   console.log(currentBuild)
+  const { buildName, id } = useParams();
+  const navigate = useNavigate();
+  const { build, deployment, fetchDeployment, fetchBuild } = useDeploy();
+
+  //   console.log(currentBuild)
   // console.log(build)
-   useEffect(() => {
+  useEffect(() => {
     if (buildName && id) {
       fetchDeployment(id);
       fetchBuild(buildName);
@@ -26,55 +26,62 @@ function BuildPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
   const [logs, setLogs] = useState<string[]>([]);
-  
+
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
   // const socketRef = useRef<WebSocket | null>(null);
 
-  useEffect(() => {
-    if (!build || build.status !== "building" || !buildName) return;
+ useEffect(() => {
+  if (!buildName) return;
 
-     const socket = io(url, {
-    query: {
-      buildId: buildName,
-    },
-    transports: ["websocket"], // enforce WebSocket transport
+  const socket = io(url, {
+    query: { buildId: buildName },
+    transports: ["websocket"],
   });
-   socket.on("status", (status: string) => {
-  console.log("Status update:", status);
-  setLiveStatus(status);
-
-  if (status === "success") {
-    setTimeout(() => {
-      navigate(`/deployments/${id}`);
-    }, 2000);
-  }
-
- 
-
-  if (status === "queued") {
-    setLogs(["Build is queued..."]);
-  }
-});
-
-
-
-     socket.on("log", (data) => {
-    setLogs((prev) => [...prev, data]);
-  });
-  
 
   socket.on("connect", () => {
     console.log("Connected to WebSocket logs");
+    if (!liveStatus && build?.status) {
+      setLiveStatus(build.status); // Use database status as fallback
+    }
   });
 
-  socket.on("disconnect", () => {
-    console.log("Disconnected from WebSocket logs");
+  socket.on("status", (status: string) => {
+    console.log("Received status update:", status);
+    setLiveStatus(status);
+
+    if (status === "success") {
+      setTimeout(() => {
+        navigate(`/deployments/${id}`);
+      }, 2000);
+    }
+
+    if (status === "queued") {
+      setLogs(["Build is queued..."]);
+    }
   });
 
-  socket.on("error", (err) => {
-    console.error("Socket error:", err);
-  });
+    socket.on("log", (data) => {
+      console.log("RAW LOG DATA:", data); // Keep for debugging
+      try {
+        const cleanLog = typeof data === "string" ? JSON.parse(data) : data;
+        setLogs((prev) => [...prev, cleanLog]);
+      } catch {
+        console.warn("Log parsing failed, falling back:", data);
+        setLogs((prev) => [...prev, data]);
+      }
+    });
 
+    socket.on("connect", () => {
+      console.log("Connected to WebSocket logs");
+    });
+
+    socket.on("disconnect", () => {
+      console.log("Disconnected from WebSocket logs");
+    });
+
+    socket.on("error", (err) => {
+      console.error("Socket error:", err);
+    });
 
     return () => {
       socket.disconnect();
@@ -93,11 +100,13 @@ function BuildPage() {
           </p>
           <p>
             <span className="text-lg text-[#918f8f]">Status: </span>
-            <span className={`text-xs px-2 py-1 rounded-full capitalize ${statusStyles[liveStatus || build?.status || ""]}`}>
-  {liveStatus || build?.status}
-</span>
-
-
+            <span
+              className={`text-xs px-2 py-1 rounded-full capitalize ${
+                statusStyles[liveStatus || build?.status || ""]
+              }`}
+            >
+              {liveStatus || build?.status}
+            </span>
           </p>
 
           <p>
@@ -118,18 +127,16 @@ function BuildPage() {
         <div className="border w-1/2 p-4 rounded-lg bg-black text-green-300 font-mono text-sm overflow-y-auto max-h-[400px]">
           <p className="font-bold text-white mb-2">Logs</p>
           {liveStatus === "building" ? (
-  logs.length > 0 ? (
-    <pre>{logs.join("\n")}</pre>
-  ) : (
-    <p className="text-gray-500">Waiting for logs...</p>
-  )
-) : liveStatus === "queued" ? (
-  <p className="text-gray-500">Build is queued...</p>
-) : (
-  <p className="text-gray-500">Logs only available while building.</p>
-)}
-
-
+            logs.length > 0 ? (
+              <pre>{logs.join("\n")}</pre>
+            ) : (
+              <p className="text-gray-500">Waiting for logs...</p>
+            )
+          ) : liveStatus === "queued" ? (
+            <p className="text-gray-500">Build is queued...</p>
+          ) : (
+            <p className="text-gray-500">Logs only available while building.</p>
+          )}
         </div>
       </div>
     </div>

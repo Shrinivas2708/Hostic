@@ -8,7 +8,7 @@ import { detectArtifactPath } from "./detectArtifactPath";
 import { getWorkDir } from "./getWorkDir";
 import { runStreamingDocker } from "./runStreaming";
 import { dockerCmd } from "./dockercmd";
-import { publishLog, publishStatus } from "./pub";
+import { publishLog, publishStatus, redisReady } from "./pub";
 import { findProjectRoot } from "./findProjectRoot";
 import uploadDirectoryToR2 from "./upload";
 
@@ -28,6 +28,7 @@ export async function processJob(job: BuildJob): Promise<string[]> {
   let workDir = "";
 
   try {
+    await redisReady;
      await publishStatus(buildId, BuildStatus.Building);
 
     logger.log(`🚀 Starting build`);
