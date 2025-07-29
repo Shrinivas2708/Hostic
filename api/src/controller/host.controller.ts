@@ -155,6 +155,7 @@ export const getDeployment = async (req: Request, res: Response, next: NextFunct
    const deployment = await Deployments.findOne({_id:deployment_id,user_id:user_id})
    if(!deployment){
      res.status(401).json({meesage:"No deployments!"})
+     return
    }
    res.status(200).json({deployment})
  } catch (error) {
@@ -178,12 +179,16 @@ export const getBuild = async (req: Request, res: Response, next: NextFunction)=
 export const deleteDeployment = async (req: Request, res: Response, next: NextFunction)=>{
   const user_id = req.id;
   const {deployment_id} = req.body
+  console.log(deployment_id)
  try {
-   const deployments = await Deployments.findByIdAndDelete({deployment_id})
+   const deployments = await Deployments.findByIdAndDelete({_id:deployment_id})
+   console.log(deployments)
    if(!deployments){
      res.status(401).json({meesage:"Such deployment doesnt exists!"})
+     return
    }
    res.status(200).json({message:"Deployment deleted successfully!"})
+   return
  } catch (error) {
   next(error)
  }

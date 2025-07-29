@@ -46,7 +46,11 @@ export type Build = {
   duration?: number;
   deployment_id: string;
 };
-
+type Redeployed = {
+  deployment_id: string,
+      build_name: string,
+      status: BuildStatus.Queued,
+}
 type DeployStore = {
   deployments: Deployments[];
   builds: Build[];
@@ -54,6 +58,7 @@ type DeployStore = {
   deployment: Deployment | null;
   build: Build | null;
   deployed : Deployed | null ;
+  redeployed : Redeployed | null;
   fetchDeployments: () => Promise<void>;
   fetchBuilds: (deployment_id: string) => Promise<void>;
   selectDeployment: (d: Deployment) => void;
@@ -71,6 +76,7 @@ export const useDeployStore = create<DeployStore>((set) => ({
   deployment : null ,
   build : null,
   deployed : null,
+  redeployed:null,
   fetchDeployments: async () => {
     const res = await axios.get('/host/');
     set({ deployments: res.data.deployments });
@@ -100,12 +106,12 @@ fetchDeployment: async (deployment_id: string) => {
 
   redeploy: async (deployment_id) => {
   const res = await axios.post('/host/redeploy', { deployment_id });
-  return res.data;
+  set({redeployed : res.data})
 },
 
 
   deleteDeployment: async (deployment_id: string) => {
-  await axios.delete('/deploy/delete', {
+  await axios.delete('/host/delete', {
     data: { deployment_id },
   });
   set((state) => ({

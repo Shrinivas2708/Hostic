@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDeploy } from "../hooks/useDeploy";
 import { formatDate } from "../exports";
+import { addToast } from "@heroui/toast";
+// import { useDeployStore } from "../store/deployStore";
 const statusStyles: Record<string, string> = {
   queued: " text-yellow-300 border border-yellow-300",
   building: "text-blue-300 border border-blue-300",
@@ -11,9 +13,10 @@ const statusStyles: Record<string, string> = {
 
 export default function DeploymentDetailsPage() {
   const { id } = useParams();
-  const { fetchDeployment, fetchBuilds, deployment, builds, error, loading , redeploy} =
+  const { fetchDeployment, fetchBuilds, deployment, builds, error, loading , redeploy,deleteDeployment,redeployed} =
     useDeploy();
-  const navigate = useNavigate();
+    // const {deleteDeployment} = useDeployStore()
+      const navigate = useNavigate();
   useEffect(() => {
     if (id) {
       fetchDeployment(id);
@@ -24,9 +27,36 @@ export default function DeploymentDetailsPage() {
   const currentBuildName = builds.find(
     (v) => v._id === deployment?.current_build_id
   );
+  const handleDelete = async()=>{
+    if(!deployment?._id) return
+    await deleteDeployment(deployment?._id).then(()=>{
+      addToast({
+        title:"Success",
+        color:"success",
+        description:"Deployment deleted!"
+      })
+      navigate("/deployments")
+    }).catch(()=>{
+addToast({
+        title:"Error",
+        color:"danger",
+        description:"Unable to delete the deployment!"
+      })
+    })
+  }
+  const handleRedeploy = async ()=>{
+    if(!deployment?._id) return 
+   await redeploy(deployment._id).then(()=>{
+      
+      navigate(`/deployments/${redeployed?.deployment_id}/${redeployed?.build_name}`)
+    }).catch(()=>{
+      navigate(`/deployment/${deployment._id}`)
+    })
+  }
   if (loading) return <div>Loading...</div>;
 
   if (error) {
+    console.log(error)
     return (
       <div className="flex flex-col items-center gap-10">
         <div className="text-red-500 text-center mt-10">
@@ -84,21 +114,24 @@ export default function DeploymentDetailsPage() {
         <div className="py-3 flex gap-3  items-center ">
           <span
             className="p-2 border-white border w-[100px] text-center rounded-lg hover:bg-white cursor-pointer text-sm transition duration-300 text-white hover:text-black"
-            onClick={() => window.open(`http://${deployment.slug}.apps.shriii.xyz`)}
+            onClick={() => 
+              // window.open(`https://${deployment.slug}.apps.shriii.xyz`)
+              window.open(`http://${deployment.slug}.localhost:8080`)
+            }
           >
             Visit
           </span>
           <span className="p-2 border-[#246BFD] border w-[100px] text-center rounded-lg hover:bg-[#246BFD] cursor-pointer text-sm transition duration-300 text-[#246BFD] hover:text-white">
             Update
           </span>
-          <span className="p-2 border-red-500 border w-[100px] text-center rounded-lg hover:bg-red-500 cursor-pointer text-sm transition duration-300 text-red-500 hover:text-white">
+          <span className="p-2 border-red-500 border w-[100px] text-center rounded-lg hover:bg-red-500 cursor-pointer text-sm transition duration-300 text-red-500 hover:text-white" onClick={()=>{handleDelete()}}>
             Delete
           </span>
         </div>
         <div className=" py-3 pr-10">
              <p
             className="p-2  w-full text-center rounded-lg  cursor-pointer text-sm transition duration-300 text-white bg-[#246BFD]"
-            onClick={() => redeploy(deployment._id)}
+            onClick={() => handleRedeploy()}
           >
             Re-deploy
           </p>

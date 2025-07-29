@@ -18,7 +18,8 @@ export const useDeploy = () => {
     deployment,
     build,
     fetchBuild,
-    deployed
+    deployed,
+    redeployed
   } = useDeployStore();
 
   const [loading, setLoading] = useState(false);
@@ -55,6 +56,7 @@ export const useDeploy = () => {
     error,
     success,
     deployed,
+    redeployed,
     selectDeployment,
     fetchDeployment: (id: string) => safeCall(() => fetchDeployment(id)),
     fetchDeployments: () => safeCall(fetchDeployments),

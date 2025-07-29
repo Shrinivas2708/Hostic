@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useDeploy } from "../hooks/useDeploy";
-import { formatDate } from "../exports";
+import { BuildStatus, formatDate } from "../exports";
 import { useEffect, useState } from "react";
 import url from "../lib/socket";
 import { io } from "socket.io-client";
@@ -32,7 +32,8 @@ function BuildPage() {
 
  useEffect(() => {
   if (!buildName) return;
-
+  if(build?.status === BuildStatus.Success) return ;
+  if(build?.status === BuildStatus.Failed) return ;
   const socket = io(url, {
     query: { buildId: buildName },
     transports: ["websocket"],

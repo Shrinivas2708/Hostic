@@ -50,3 +50,9 @@ export  const formatDate = (date: string) => {
 
 
 
+export enum BuildStatus {
+  Queued = "queued",
+  Building = "building",
+  Failed = "failed",
+  Success = "success",
+}
