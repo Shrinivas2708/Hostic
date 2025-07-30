@@ -11,7 +11,7 @@ import { Builds, BuildStatus } from "./model/Builds.model";
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-const BASE_PATH = process.env.BASE_PATH;
+const BASE_PATH = "https://2b086fbe3c7ee18f666646ea5178c5e2.r2.cloudflarestorage.com";
 const MONGODB_URI =process.env.DATABASE_URL;
 const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY;
 const R2_SECRET_KEY = process.env.R2_SECRET_KEY;
