@@ -4,6 +4,7 @@ import { BuildStatus, formatDate } from "../exports";
 import { useEffect, useState } from "react";
 import url from "../lib/socket";
 import { io } from "socket.io-client";
+
 const statusStyles: Record<string, string> = {
   queued: "text-yellow-300 border border-yellow-300",
   building: "text-blue-300 border border-blue-300",
@@ -16,24 +17,29 @@ function BuildPage() {
   const navigate = useNavigate();
   const { build, deployment, fetchDeployment, fetchBuild } = useDeploy();
 
-  //   console.log(currentBuild)
-  // console.log(build)
-  useEffect(() => {
+  const [logs, setLogs] = useState<string[]>([]);
+  const [liveStatus, setLiveStatus] = useState<string | null>(null);
+  console.log(build)
+
+  // Fetch deployment and build data
+ useEffect(() => {
     if (buildName && id) {
       fetchDeployment(id);
       fetchBuild(buildName);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
-  const [logs, setLogs] = useState<string[]>([]);
-
-  const [liveStatus, setLiveStatus] = useState<string | null>(null);
-  // const socketRef = useRef<WebSocket | null>(null);
-
+  // WebSocket connection for real-time logs
  useEffect(() => {
   if (!buildName) return;
-  if(build?.status === BuildStatus.Success) return ;
-  if(build?.status === BuildStatus.Failed) return ;
+ if (build?.status === BuildStatus.Success || build?.status === BuildStatus.Failed) {
+  console.log(build)
+    console.log("Skipping WebSocket — build already complete.");
+    return;
+  }
+  if(build===null){
+    setLiveStatus(BuildStatus.Building)
+  }
   const socket = io(url, {
     query: { buildId: buildName },
     transports: ["websocket"],
@@ -41,8 +47,10 @@ function BuildPage() {
 
   socket.on("connect", () => {
     console.log("Connected to WebSocket logs");
+
+    // fallback to existing build status if liveStatus isn't set
     if (!liveStatus && build?.status) {
-      setLiveStatus(build.status); // Use database status as fallback
+      setLiveStatus(build.status);
     }
   });
 
@@ -51,9 +59,7 @@ function BuildPage() {
     setLiveStatus(status);
 
     if (status === "success") {
-      setTimeout(() => {
-        navigate(`/deployments/${id}`);
-      }, 2000);
+      setTimeout(() => navigate(`/deployments/${id}`), 2000);
     }
 
     if (status === "queued") {
@@ -61,39 +67,30 @@ function BuildPage() {
     }
   });
 
-    socket.on("log", (data) => {
-      console.log("RAW LOG DATA:", data); // Keep for debugging
-      try {
-        const cleanLog = typeof data === "string" ? JSON.parse(data) : data;
-        setLogs((prev) => [...prev, cleanLog]);
-      } catch {
-        console.warn("Log parsing failed, falling back:", data);
-        setLogs((prev) => [...prev, data]);
-      }
-    });
+  socket.on("log", (data) => {
+    const newLog = typeof data === "string" ? data : JSON.stringify(data);
+    setLogs((prev) => [...prev, newLog]);
+  });
 
-    socket.on("connect", () => {
-      console.log("Connected to WebSocket logs");
-    });
+  socket.on("disconnect", () => {
+    console.log("Disconnected from WebSocket logs");
+  });
 
-    socket.on("disconnect", () => {
-      console.log("Disconnected from WebSocket logs");
-    });
+  socket.on("error", (err) => {
+    console.error("Socket error:", err);
+  });
 
-    socket.on("error", (err) => {
-      console.error("Socket error:", err);
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [build, buildName]);
+  return () => {
+    console.log("Cleaning up WebSocket for buildId:", buildName);
+    socket.disconnect();
+  };
+}, [buildName]); // ✅ only depends on buildName
 
   return (
-    <div className="flex items-center flex-col p-5  space-y-10">
+    <div className="flex items-center flex-col p-5 space-y-10">
       <p className="text-xl text-center font-bold">{deployment?.slug}</p>
 
-      <div className="flex justify-evenly  w-full">
+      <div className="flex justify-evenly w-full">
         <div className="flex flex-col gap-3 p-5 text-lg font-medium border border-white/10 rounded-lg">
           <p>
             <span className="text-lg text-[#918f8f]">Build name: </span>
@@ -109,18 +106,16 @@ function BuildPage() {
               {liveStatus || build?.status}
             </span>
           </p>
-
           <p>
-            <span className="text-lg text-[#918f8f]">Started at : </span>
+            <span className="text-lg text-[#918f8f]">Started at: </span>
             {formatDate(build?.startedAt || "N/A")}
           </p>
           <p>
-            <span className="text-lg text-[#918f8f]">Finished at : </span>
+            <span className="text-lg text-[#918f8f]">Finished at: </span>
             {formatDate(build?.finishedAt || "N/A")}
           </p>
-
           <p>
-            <span className="text-lg text-[#918f8f]">Duration : </span>
+            <span className="text-lg text-[#918f8f]">Duration: </span>
             Took {Number(build?.duration || 0) / 1000}s to build
           </p>
         </div>

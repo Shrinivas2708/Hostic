@@ -6,6 +6,7 @@ import path from "path";
  * Returns the absolute path to the folder containing package.json.
  */
 export function findProjectRoot(startDir: string): string | null {
+  const skipDirs = new Set(["node_modules", "dist", "build"]);
   const entries = fs.readdirSync(startDir, { withFileTypes: true });
 
   // Check if package.json exists in current directory
@@ -15,7 +16,7 @@ export function findProjectRoot(startDir: string): string | null {
 
   // Recursively check subdirectories
   for (const entry of entries) {
-    if (entry.isDirectory() && !entry.name.startsWith(".")) {
+    if (entry.isDirectory() && !entry.name.startsWith(".")&& !skipDirs.has(entry.name)) {
       const found = findProjectRoot(path.join(startDir, entry.name));
       if (found) return found;
     }

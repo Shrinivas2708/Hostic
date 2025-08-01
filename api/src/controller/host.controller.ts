@@ -13,11 +13,12 @@ export const deploy = async (req: Request, res: Response, next: NextFunction) =>
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const { repo_url, project_type, buildCommands,installCommands } = req.body as {
+    const { repo_url, project_type, buildCommands,installCommands,buildDir } = req.body as {
       repo_url: string;
       project_type: ProjectType;
       buildCommands?: string;
       installCommands?: string;
+      buildDir?:string
     };
 
     // Enforce user deployment quota
@@ -37,7 +38,8 @@ export const deploy = async (req: Request, res: Response, next: NextFunction) =>
       slug,
       projectType: project_type,
       buildCommands,
-      installCommands
+      installCommands,
+      buildDir
     });
 
     // Create build row with short build_name
@@ -58,8 +60,9 @@ export const deploy = async (req: Request, res: Response, next: NextFunction) =>
         repo_url,
         slug,
         project_type,
-        buildCommands : buildCommands,
-        installCommands:installCommands
+        buildCommands,  
+        installCommands,
+        buildDir
       });
     } catch (err) {
       // Roll back deployments_count if enqueue fails
@@ -118,7 +121,8 @@ export const redeploy = async (req: Request, res: Response, next: NextFunction) 
         slug: deployment.slug,
         project_type: deployment.projectType,
       buildCommands : deployment.buildCommands,
-        installCommands:deployment.installCommands
+        installCommands:deployment.installCommands,
+        buildDir:deployment.buildDir
       });
 
       res.json({
@@ -182,7 +186,10 @@ export const deleteDeployment = async (req: Request, res: Response, next: NextFu
   console.log(deployment_id)
  try {
    const deployments = await Deployments.findByIdAndDelete({_id:deployment_id})
-   console.log(deployments)
+  //  console.log(deployments)
+  await Builds.deleteMany({
+    deployment_id
+  })
    if(!deployments){
      res.status(401).json({meesage:"Such deployment doesnt exists!"})
      return
@@ -207,4 +214,8 @@ export const getBuildsForDeployment = async (req: Request, res: Response, next: 
   } catch (error) {
     next(error);
   }
+};
+export const getImg = async (req:Request,res:Response,next:NextFunction) =>{
+  const user_id = req.id;
+  const {deployment_id,}
 };

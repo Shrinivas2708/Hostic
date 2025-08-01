@@ -7,7 +7,7 @@ import type { BuildLogger } from "./logger";
  * We split on newlines but also emit partial lines so progress bars show.
  */
 export function runStreamingDocker(argv: string[], logger: BuildLogger): Promise<void> {
-  logger.log(`⏯ docker ${argv.join(" ")}`);
+  logger.log(`Running container`);
 
   return new Promise((resolve, reject) => {
     const child = spawn("docker", argv, { stdio: ["ignore", "pipe", "pipe"] });
@@ -34,10 +34,10 @@ export function runStreamingDocker(argv: string[], logger: BuildLogger): Promise
 
     child.on("close", (code) => {
       if (code === 0) {
-        logger.log("✅ docker step exited 0");
+        logger.log("✅  step exited 0");
         resolve();
       } else {
-        logger.error(`❌ docker step failed (exit ${code})`);
+        logger.error(`❌  step failed (exit ${code})`);
         reject(new Error(`docker exit ${code}`));
       }
     });

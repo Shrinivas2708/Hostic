@@ -11,6 +11,7 @@ import { dockerCmd } from "./dockercmd";
 import { publishLog, publishStatus, redisReady } from "./pub";
 import { findProjectRoot } from "./findProjectRoot";
 import uploadDirectoryToR2 from "./upload";
+import path from "path";
 
 export async function processJob(job: BuildJob): Promise<string[]> {
   const {
@@ -21,6 +22,7 @@ export async function processJob(job: BuildJob): Promise<string[]> {
     project_type,
     installCommands,
     buildCommands,
+    buildDir,
   } = job;
 
   const logger = makeBuildLogger(buildId);
@@ -29,9 +31,9 @@ export async function processJob(job: BuildJob): Promise<string[]> {
 
   try {
     await redisReady;
-     await publishStatus(buildId, BuildStatus.Building);
+    await publishStatus(buildId, BuildStatus.Building);
 
-    logger.log(`🚀 Starting build`);
+    logger.log(`🚀 Starting build for `);
     logger.log(
       `📦 Repo: ${repo_url} | Slug: ${slug} | Type: ${project_type} | Build Cmd: ${buildCommands}`
     );
@@ -55,29 +57,39 @@ export async function processJob(job: BuildJob): Promise<string[]> {
     logger.log("✅ Repository cloned successfully.");
 
     // Step A: Install dependencies
-    logger.log("📄 Searching for package.json...");
-    const projectRoot = findProjectRoot(workDir);
-    if (!projectRoot) {
-      logger.error("⚠️ package.json not found. Cannot proceed.");
-      throw new Error("package.json not found in repository");
+    const buildDir = job.buildDir || "./";
+    const fullPath = path.resolve(workDir, buildDir);
+    console.log(buildDir)
+    // First check if user-specified dir has package.json
+    let projectRoot = "";
+    if (fs.existsSync(path.join(fullPath, "package.json"))) {
+      projectRoot = fullPath;
+      logger.log(`📦 Using user-specified directory: ${buildDir}`);
+    } else {
+      logger.log(
+        `🔍 package.json not found in ${buildDir}, falling back to auto-detect...`
+      );
+      const detected = findProjectRoot(workDir);
+      if (!detected) {
+        logger.error("⚠️ package.json not found anywhere. Cannot proceed.");
+        throw new Error("package.json not found in repository");
+      }
+      projectRoot = detected;
+      logger.log(`📁 Detected project root at: ${projectRoot}`);
     }
 
-    const installCmd = dockerCmd(
-      projectRoot,
-      installCommands!,
-      `install-${buildId}`
-    );
-    logger.log("📦 Installing dependencies");
-    await runStreamingDocker(installCmd, logger);
-    logger.log("✅ Dependencies installed successfully.");
+    const combinedCmd = `
+echo "[INSTALL] Starting to install packages..." && \
+${installCommands} && \
+echo "[BUILD] Starting build process..." && \
+${buildCommands}
+`.trim();
 
-    // Step B: Run user build command
-    const userBuild = buildCommands?.trim();
-    const buildShell = userBuild || "npm run build";
-    const buildCmd = dockerCmd(workDir, buildShell, `build-${buildId}`);
-    logger.log(`🛠️ Running build step: "${buildShell}" inside Docker...`);
-    await runStreamingDocker(buildCmd, logger);
-    logger.log("✅ Build step completed successfully.");
+    const dockerArgs = dockerCmd(projectRoot, combinedCmd, `build-${buildId}`);
+
+    logger.log(`📦 Installing & building inside  container...`);
+    await runStreamingDocker(dockerArgs, logger);
+    logger.log("✅ Install & build steps completed successfully.");
 
     // Step C: Detect artifact output
     // logger.log("🔍 Detecting build output artifacts...");
@@ -86,7 +98,7 @@ export async function processJob(job: BuildJob): Promise<string[]> {
       logger.error("⚠️ Build output folder not found.");
       throw new Error("build output folder not found");
     }
-    logger.log(`📦 Artifacts found at: ${artifactPath}`);
+    // logger.log(`📦 Artifacts found at: ${artifactPath}`);
 
     const r2KeyPrefix = `__output/${slug}/${buildId}/`;
     logger.log(`☁️ Uploading output for ${slug} `);
@@ -119,12 +131,13 @@ export async function processJob(job: BuildJob): Promise<string[]> {
     logger.log("🎉 Build process completed successfully.");
   } catch (err: any) {
     const errorMsg = `❌ Build failed: ${err?.message || err}`;
-    await publishStatus(buildId, BuildStatus.Failed);
+    // await publishStatus(buildId, BuildStatus.Failed);
     logger.error(errorMsg);
 
     // Publish log to Redis (non-blocking for status update)
     try {
       await publishLog(buildId, errorMsg);
+      await publishStatus(buildId, BuildStatus.Failed);
     } catch (pubErr) {
       console.error("⚠️ Failed to publish log to Redis:", pubErr);
     }

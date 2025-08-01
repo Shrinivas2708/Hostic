@@ -7,6 +7,9 @@ import authRouter from "./router/auth.routes";
 import { errorHandler } from "./utils/errorHandler";
 import hostRouter from "./router/host.routes";
 import userRouter from "./router/user.routes";
+import puppeteer from "puppeteer";
+import { captureAndUploadScreenshot } from "./utils/uploadss";
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 (async () => {
@@ -16,7 +19,7 @@ const PORT = process.env.PORT || 5000;
   app.listen(5000, () => console.log("Server running on port 5000"));
 })();
 app.use(cors())
-
+console.log(__dirname)
 app.use(express.json())
 app.get("/",async (req,res)=>{
     res.json({
@@ -26,4 +29,10 @@ app.get("/",async (req,res)=>{
 app.use("/api/auth",authRouter)
 app.use("/api/host",hostRouter)
 app.use("/api/user",userRouter)
+app.post("/getimage",async (req,res)=>{
+    const data = await captureAndUploadScreenshot("https://vercel.com")
+  res.json({
+    data
+  })
+})
 app.use(errorHandler);

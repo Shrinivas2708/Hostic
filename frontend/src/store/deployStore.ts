@@ -35,6 +35,7 @@ export type Data = {
       project_type: string;
       buildCommands: string;
       installCommands: string;
+      buildDir:string
 }
 export type Build = {
   _id: string;
@@ -99,6 +100,7 @@ fetchDeployment: async (deployment_id: string) => {
   },
 
   createDeployment: async (data) => {
+    console.log(data)
   const res = await axios.post("/host/", data);
   set({ deployed: res.data }); // you were probably doing this already
   return res.data as Deployed; // ← this is the key fix!
