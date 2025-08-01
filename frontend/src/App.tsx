@@ -13,6 +13,7 @@ import DeploymentsPage from "./pages/DeploymentsPage";
 import DeploymentDetailsPage from "./pages/DeploymentsUpdatePage";
 import BuildPage from "./pages/BuildPage";
 import Deploy from "./pages/Deploy";
+import Deployed from "./pages/Deployed";
 // import { HeroUIProvider } from '@heroui/system';
 // import Deploy from './pages/DeploymentsPage';
 
@@ -77,6 +78,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Deploy />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/deployed/:id/:buildName"
+              element={
+                <ProtectedRoute>
+                  <Deployed />
                 </ProtectedRoute>
               }
             />

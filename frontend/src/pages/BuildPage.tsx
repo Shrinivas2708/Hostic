@@ -59,7 +59,7 @@ function BuildPage() {
     setLiveStatus(status);
 
     if (status === "success") {
-      setTimeout(() => navigate(`/deployments/${id}`), 2000);
+      setTimeout(() => navigate(`/deployed/${id}/${buildName}`), 2000);
     }
 
     if (status === "queued") {

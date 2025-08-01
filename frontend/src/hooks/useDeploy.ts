@@ -19,7 +19,9 @@ export const useDeploy = () => {
     build,
     fetchBuild,
     deployed,
-    redeployed
+    redeployed,
+    getImg,
+    deploy_img
   } = useDeployStore();
 
   const [loading, setLoading] = useState(false);
@@ -58,6 +60,8 @@ export const useDeploy = () => {
     deployed,
     redeployed,
     selectDeployment,
+    deploy_img,
+    getImg:(id:string) => safeCall(()=> getImg(id)),
     fetchDeployment: (id: string) => safeCall(() => fetchDeployment(id)),
     fetchDeployments: () => safeCall(fetchDeployments),
     fetchBuilds: (id: string) => safeCall(() => fetchBuilds(id)),

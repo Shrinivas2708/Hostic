@@ -3,7 +3,8 @@ import { create } from 'zustand';
 import axios from '../lib/axios';
 export type Deployments = {
   _id : string;
-  slug : string
+  slug : string;
+  img_url:string
 }
 export enum BuildStatus {
   Queued = "queued",
@@ -27,7 +28,8 @@ export type Deployment = {
   buildCommands?: string;
   installCommands?:string
   createdAt: string;
-  current_build_id: string
+  current_build_id: string;
+  img_url:string
 };
 
 export type Data = {
@@ -60,6 +62,7 @@ type DeployStore = {
   build: Build | null;
   deployed : Deployed | null ;
   redeployed : Redeployed | null;
+  deploy_img : string;
   fetchDeployments: () => Promise<void>;
   fetchBuilds: (deployment_id: string) => Promise<void>;
   selectDeployment: (d: Deployment) => void;
@@ -68,6 +71,7 @@ type DeployStore = {
   deleteDeployment: (slug: string) => Promise<void>;
   fetchDeployment: (deployment_id: string) => Promise<void>;
   fetchBuild : (slug:string) => Promise<void>;
+  getImg:(deployment_id:string) => Promise<void>;
 };
 
 export const useDeployStore = create<DeployStore>((set) => ({
@@ -78,6 +82,11 @@ export const useDeployStore = create<DeployStore>((set) => ({
   build : null,
   deployed : null,
   redeployed:null,
+  deploy_img:"",
+  getImg: async (deployment_id:string)=>{
+    const res = await axios.post(`/host/getimg`,{deployment_id});
+    set({deploy_img:res.data.url})
+  },
   fetchDeployments: async () => {
     const res = await axios.get('/host/');
     set({ deployments: res.data.deployments });
