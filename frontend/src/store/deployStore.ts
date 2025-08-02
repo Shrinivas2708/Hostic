@@ -67,7 +67,7 @@ type DeployStore = {
   fetchBuilds: (deployment_id: string) => Promise<void>;
   selectDeployment: (d: Deployment) => void;
   createDeployment: (data: Data) => Promise<Deployed>;
-  redeploy: (slug: string) => Promise<void>;
+  redeploy: (slug: string) => Promise<Redeployed>;
   deleteDeployment: (slug: string) => Promise<void>;
   fetchDeployment: (deployment_id: string) => Promise<void>;
   fetchBuild : (slug:string) => Promise<void>;
@@ -118,6 +118,7 @@ fetchDeployment: async (deployment_id: string) => {
   redeploy: async (deployment_id) => {
   const res = await axios.post('/host/redeploy', { deployment_id });
   set({redeployed : res.data})
+  return res.data as Redeployed;
 },
 
 

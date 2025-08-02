@@ -13,7 +13,7 @@ const statusStyles: Record<string, string> = {
 
 export default function DeploymentDetailsPage() {
   const { id } = useParams();
-  const { fetchDeployment, fetchBuilds, deployment, builds, error, loading , redeploy,deleteDeployment,redeployed} =
+  const { fetchDeployment, fetchBuilds, deployment, builds, error, loading , redeploy,deleteDeployment} =
     useDeploy();
     // const {deleteDeployment} = useDeployStore()
       const navigate = useNavigate();
@@ -45,13 +45,13 @@ addToast({
     })
   }
   const handleRedeploy = async ()=>{
-    if(!deployment?._id) return 
-   await redeploy(deployment._id).then(()=>{
-      
-      navigate(`/deployments/${redeployed?.deployment_id}/${redeployed?.build_name}`)
-    }).catch(()=>{
-      navigate(`/deployment/${deployment._id}`)
-    })
+    if (!deployment?._id) return;
+  const data = await redeploy(deployment._id);
+  if (data) {
+    navigate(`/deployments/${data.deployment_id}/${data.build_name}`);
+  } else {
+    navigate(`/deployment/${deployment._id}`);
+  }
   }
   if (loading) return <div>Loading...</div>;
 

@@ -19,8 +19,8 @@ function DeploymentsCard({ data }: { data: Deployments }) {
             <CardItem as={"div"} className="w-full" translateZ="100">
               <img
                 src={data.img_url}
-                className="h-[200px] w-full object-cover rounded-t-xl border-b border-white/10"
-                alt=""
+                className="h-[200px] w-full object-cover rounded-t-xl border-b text-center border-white/10"
+                alt="No img found"
               />
             </CardItem>
 
