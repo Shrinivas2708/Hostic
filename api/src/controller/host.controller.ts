@@ -280,7 +280,8 @@ export const getImgForBuild = async (
     if (!Build) return res.status(404).json({ error: "Build not found" });
 
     const name = `${Deployment.slug}&${Build.build_name}`;
-    const url = `http://${Deployment.slug}.localhost:8080`;
+    // const url = `http://${Deployment.slug}.localhost:8080`;
+    const url = `https://${Deployment.slug}.apps.shriii.xyz`;
 
     // ✅ IF image already exists AND build_id is the same as last image build, return early
     if (

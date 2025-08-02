@@ -116,8 +116,8 @@ addToast({
           <span
             className="p-2 border-white border w-[100px] text-center rounded-lg hover:bg-white cursor-pointer text-sm transition duration-300 text-white hover:text-black"
             onClick={() => 
-              // window.open(`https://${deployment.slug}.apps.shriii.xyz`)
-              window.open(`http://${deployment.slug}.localhost:8080`)
+              window.open(`https://${deployment.slug}.apps.shriii.xyz`)
+              // window.open(`http://${deployment.slug}.localhost:8080`)
             }
           >
             Visit

@@ -19,7 +19,8 @@ function Deployed() {
       <BackgroundLines>
        
           <div className="flex flex-col justify-center items-center border border-white/10 rounded-lg space-y-3 md:p-5 p-3 relative z-10 hover:cursor-pointer" onClick={()=>{
-            window.open(`http://${deployment?.slug}.localhost:8080`)
+            // window.open(`http://${deployment?.slug}.localhost:8080`)
+            window.open(`https://${deployment.slug}.apps.shriii.xyz`)
           }}>
             {loading ? <Spinner color="default" /> : <img
               src={deploy_img!}
