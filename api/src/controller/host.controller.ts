@@ -227,6 +227,10 @@ export const deleteDeployment = async (
     await Builds.deleteMany({
       deployment_id,
     });
+
+    if(deployments?.img_id){
+      await Delete(deployments?.img_id)
+    }
     if (!deployments) {
       res.status(401).json({ meesage: "Such deployment doesnt exists!" });
       return;

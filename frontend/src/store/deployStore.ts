@@ -62,7 +62,7 @@ type DeployStore = {
   build: Build | null;
   deployed : Deployed | null ;
   redeployed : Redeployed | null;
-  deploy_img : string;
+  deploy_img : string | null;
   fetchDeployments: () => Promise<void>;
   fetchBuilds: (deployment_id: string) => Promise<void>;
   selectDeployment: (d: Deployment) => void;
@@ -82,7 +82,7 @@ export const useDeployStore = create<DeployStore>((set) => ({
   build : null,
   deployed : null,
   redeployed:null,
-  deploy_img:"",
+  deploy_img:null,
   getImg: async (deployment_id:string)=>{
     const res = await axios.post(`/host/getimg`,{deployment_id});
     set({deploy_img:res.data.url})

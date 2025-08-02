@@ -18,12 +18,13 @@ export const BackgroundLines = ({
   return (
     <div
       className={cn(
-        "h-[20rem] md:h-screen w-full ",
+        " h-screen w-full flex items-center justify-center ",
         className
       )}
     >
-      <SVG svgOptions={svgOptions} />
+      
       {children}
+      <SVG svgOptions={svgOptions} />
     </div>
   );
 };

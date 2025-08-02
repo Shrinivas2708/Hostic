@@ -16,30 +16,44 @@ function BuildPage() {
   const { buildName, id } = useParams();
   const navigate = useNavigate();
   const { build, deployment, fetchDeployment, fetchBuild } = useDeploy();
+  const [loadingBuild, setLoadingBuild] = useState(true);
 
   const [logs, setLogs] = useState<string[]>([]);
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
   console.log(build)
 
   // Fetch deployment and build data
- useEffect(() => {
-    if (buildName && id) {
-      fetchDeployment(id);
-      fetchBuild(buildName);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+//  useEffect(() => {
+//     if (buildName && id) {
+//       fetchDeployment(id);
+//       fetchBuild(buildName);
+//     }
+//     // eslint-disable-next-line react-hooks/exhaustive-deps
+//   }, [id]);
+useEffect(() => {
+  if (buildName && id) {
+    setLoadingBuild(true);
+    Promise.all([
+      fetchDeployment(id),
+      fetchBuild(buildName),
+    ]).finally(() => {
+      setLoadingBuild(false);
+    });
+  }
+}, [id, buildName]);
+
   // WebSocket connection for real-time logs
- useEffect(() => {
-  if (!buildName) return;
- if (build?.status === BuildStatus.Success || build?.status === BuildStatus.Failed) {
-  console.log(build)
+useEffect(() => {
+  if (loadingBuild || !buildName || !build) return;
+
+  if (
+    build.status === BuildStatus.Success ||
+    build.status === BuildStatus.Failed
+  ) {
     console.log("Skipping WebSocket — build already complete.");
     return;
   }
-  if(build===null){
-    setLiveStatus(BuildStatus.Building)
-  }
+
   const socket = io(url, {
     query: { buildId: buildName },
     transports: ["websocket"],
@@ -47,8 +61,6 @@ function BuildPage() {
 
   socket.on("connect", () => {
     console.log("Connected to WebSocket logs");
-
-    // fallback to existing build status if liveStatus isn't set
     if (!liveStatus && build?.status) {
       setLiveStatus(build.status);
     }
@@ -84,7 +96,7 @@ function BuildPage() {
     console.log("Cleaning up WebSocket for buildId:", buildName);
     socket.disconnect();
   };
-}, [buildName]); // ✅ only depends on buildName
+}, [buildName, build, loadingBuild]);
 
   return (
     <div className="flex items-center flex-col p-5 space-y-10">

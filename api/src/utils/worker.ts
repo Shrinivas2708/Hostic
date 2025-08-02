@@ -12,6 +12,7 @@ import { publishLog, publishStatus, redisReady } from "./pub";
 import { findProjectRoot } from "./findProjectRoot";
 import uploadDirectoryToR2 from "./upload";
 import path from "path";
+// import delay from "./delay";
 
 export async function processJob(job: BuildJob): Promise<string[]> {
   const {
@@ -31,6 +32,7 @@ export async function processJob(job: BuildJob): Promise<string[]> {
 
   try {
     await redisReady;
+    // await delay(2000)
     await publishStatus(buildId, BuildStatus.Building);
 
     logger.log(`🚀 Starting build for `);

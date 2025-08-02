@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useDeploy } from "../hooks/useDeploy";
 import { formatDate } from "../exports";
 import { addToast } from "@heroui/toast";
+import { Spinner } from "@heroui/spinner";
 // import { useDeployStore } from "../store/deployStore";
 const statusStyles: Record<string, string> = {
   queued: " text-yellow-300 border border-yellow-300",
@@ -53,7 +54,7 @@ addToast({
     navigate(`/deployment/${deployment._id}`);
   }
   }
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div className="w-full h-[30rem]  flex justify-center items-center"><Spinner color="default"/></div>;
 
   if (error) {
     console.log(error)
