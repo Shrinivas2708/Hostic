@@ -32,7 +32,8 @@ function Deployed() {
               <p >
                 Website successfully published at{" "}
                 <a
-                  href={`http://${deployment?.slug}.localhost:8080`}
+                  // href={`http://${deployment?.slug}.localhost:8080`}
+                  href={`https://${deployment?.slug}.apps.shriii.xyz`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline hover:text-gray-500 "
