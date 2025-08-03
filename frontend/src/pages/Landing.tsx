@@ -3,7 +3,7 @@ import lightSvg from "../assets/light.svg";
 import rocket from "../assets/rocket.svg";
 import { ContainerScroll } from "../components/ui/container-scroll-animation";
 import { Cover } from "../components/ui/cover";
-import video from "/6548176-hd_1920_1080_24fps.mp4";
+import video from "/hostic.mp4";
 import StepCard from "../components/Card";
 import { Features } from "../components/Feature";
 import { steps } from "../exports";
@@ -53,6 +53,7 @@ const Landing = () => {
             playsInline
             className="w-full h-full object-cover rounded-2xl"
           />
+          {/* <img src={video} alt="" className="w-full h-full object-contain rounded-2xl" /> */}
         </ContainerScroll>
       </div>
       <section className="max-w mx-auto px-4 pt-24 pb-10">
