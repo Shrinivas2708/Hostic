@@ -55,7 +55,10 @@ export const deploy = async (
       build_name: buildName,
       status: BuildStatus.Queued,
     });
-
+await Deployments.updateOne({_id:deployment._id},
+ 
+      { $inc: { buildNo: 1 } }
+)
     try {
       console.log(`${installCommands} && ${buildCommands}`);
       // Queue job for worker
@@ -110,13 +113,17 @@ export const redeploy = async (
       _id: deployment_id,
       user_id,
     });
-
+    
     if (!deployment) {
       return res
         .status(404)
         .json({ message: "Deployment not found or unauthorized" });
     }
-
+if(deployment.buildNo! > 2 ){
+res.status(400).json({
+  message:"Max redeploy reached!"
+})
+}
     // Create new build row with short build_name
     const buildName = shortid.generate();
     const build = await Builds.create({
@@ -124,7 +131,10 @@ export const redeploy = async (
       build_name: buildName,
       status: BuildStatus.Queued,
     });
-
+await Deployments.updateOne({_id:deployment_id},
+ 
+      { $inc: { buildNo: 1 } }
+)
     try {
       console.log(
         `${deployment.installCommands} && ${deployment.buildCommands}`
