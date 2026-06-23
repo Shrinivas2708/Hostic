@@ -14,8 +14,6 @@ import DeploymentDetailsPage from "./pages/DeploymentsUpdatePage";
 import BuildPage from "./pages/BuildPage";
 import Deploy from "./pages/Deploy";
 import Deployed from "./pages/Deployed";
-// import { HeroUIProvider } from '@heroui/system';
-// import Deploy from './pages/DeploymentsPage';
 
 function App() {
   const { token, user, fetchUser } = useAuthStore();
@@ -29,11 +27,7 @@ function App() {
   }, [token, user, fetchUser]);
 
   return (
-    <div className="relative flex flex-col min-h-screen bg-[#040B10] text-white overflow-hidden">
-      {/* 💡 Background Glow Circles */}
-      <div className="absolute -top-72 -left-72 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-[#246BFD] opacity-40 rounded-full blur-[200px] z-0 pointer-events-none" />
-      <div className="absolute -bottom-72 -right-72 w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-[#246BFD] opacity-20 rounded-full blur-[200px] z-0 pointer-events-none" />
-
+    <div className="relative flex min-h-screen flex-col bg-canvas text-on-dark">
       <BrowserRouter>
         <Navbar />
         <main className="relative z-10 flex-grow">
@@ -98,6 +92,5 @@ function App() {
     </div>
   );
 }
-
 
 export default App;

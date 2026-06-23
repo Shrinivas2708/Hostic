@@ -13,8 +13,8 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 const BASE_PATH = "https://2b086fbe3c7ee18f666646ea5178c5e2.r2.cloudflarestorage.com";
 const MONGODB_URI =process.env.DATABASE_URL;
-const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY;
-const R2_SECRET_KEY = process.env.R2_SECRET_KEY;
+const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID;
+const R2_SECRET_KEY = process.env.R2_SECRET_ACCESS_KEY;
 const R2_BUCKET = process.env.R2_BUCKET ;
 const PUBLIC_PATH = path.resolve(__dirname, "..", "public");
 
@@ -61,8 +61,8 @@ function resolveRequestedFile(reqPath: string): string {
 app.use(async (req: Request, res: Response) => {
   try {
     const hostname = getOriginalHostname(req);
-    const slug = extractSlug(hostname);
-    // const slug = hostname.split(".")[0]
+    // const slug = extractSlug(hostname);
+    const slug = hostname.split(".")[0]
     console.log(`Incoming host=${hostname} slug=${slug}`);
 
     if (!slug) {

@@ -32,7 +32,7 @@ export const steps = [
     img: deploy,
   },
   {
-    title: "Redploy with Ease",
+    title: "Redeploy with Ease",
     desc: "Push updates to your repo and we handle the rest.",
     img: redeploy,
   }

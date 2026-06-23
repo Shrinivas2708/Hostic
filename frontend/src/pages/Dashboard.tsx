@@ -1,61 +1,65 @@
 import { useAuthStore } from "../store/authStore";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { PageContainer, PageHeader } from "../components/layout/PageContainer";
+import { formatDate } from "../exports";
 
 function Dashboard() {
-  const getInitials = (username: string) => {
-    return username
+  const getInitials = (username: string) =>
+    username
       .split(" ")
       .map((part) => part[0])
       .join("")
       .toUpperCase();
-  };
- const formatDate = (date: string) => {
-  return new Date(date).toLocaleString("en-IN", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
 
   const { user, logout } = useAuthStore();
+
   return (
-    <div className="flex justify-center items-center h-[600px]">
-      <div className="flex flex-col border border-[#262626] rounded-xl p-10   gap-3">
-        <div className="w-20 h-20 flex text-4xl items-center justify-center rounded-full border  font-bold  ">
-          {user?.avatarUrl ? (
-            <img
-              src={user.avatarUrl}
-              alt="avatar"
-              className="w-full h-full rounded-full object-cover "
-            />
-          ) : (
-            getInitials(user?.username || "")
-          )}
+    <PageContainer narrow>
+      <PageHeader
+        title="Account"
+        description="Manage your profile and deployment quota."
+      />
+
+      <Card padding="lg">
+        <div className="flex items-center gap-5">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-hairline bg-surface-elevated text-xl font-bold">
+            {user?.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt="avatar"
+                className="h-full w-full rounded-full object-cover"
+              />
+            ) : (
+              getInitials(user?.username || "")
+            )}
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-on-dark">{user?.username}</h2>
+            <p className="text-sm text-muted">{user?.email}</p>
+          </div>
         </div>
 
-        <span className="text-[#666666]">
-          Username: <span className="text-white"> {user?.username}</span>
-        </span>
-        <span className="text-[#666666]">
-          Email: <span className="text-white"> {user?.email}</span>
-        </span>
-        <span className="text-[#666666]">
-          Total Deployments:{" "}
-          <span className="text-white"> {user?.deployments_count}</span>
-        </span>
-        <span className="text-[#666666]">
-          Total Deployments:{" "}
-          <span className="text-white"> {formatDate(user?.createdAt || "")}</span>
-        </span>
-        <span
-          className="p-2 border-red-500 border w-[100px] text-center rounded-lg hover:bg-red-500 cursor-pointer text-sm transition duration-300 text-red-500 hover:text-white mt-4"
-          onClick={() => logout()}
-        >
-          Logout
-        </span>
-      </div>
-    </div>
+        <dl className="mt-8 space-y-4 border-t border-hairline pt-8">
+          <div className="flex justify-between">
+            <dt className="text-sm text-muted">Deployments used</dt>
+            <dd className="text-sm font-medium text-brand">
+              {user?.deployments_count ?? 0} / 3
+            </dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-sm text-muted">Member since</dt>
+            <dd className="text-sm font-medium text-on-dark">
+              {formatDate(user?.createdAt || "")}
+            </dd>
+          </div>
+        </dl>
+
+        <Button variant="danger" className="mt-8" onClick={() => logout()}>
+          Sign out
+        </Button>
+      </Card>
+    </PageContainer>
   );
 }
 

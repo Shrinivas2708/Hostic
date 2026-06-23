@@ -1,88 +1,127 @@
-import { Box, Lock, Search, Settings, Sparkles } from "lucide-react";
-import { GlowingEffect } from "./ui/glowing-effect";
+import {
+  Box,
+  RefreshCw,
+  Settings2,
+  Sparkles,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
+import { cn } from "../lib/utils";
 
-interface GridItemProps {
-  area: string;
-  icon: React.ReactNode;
+interface Feature {
+  icon: LucideIcon;
   title: string;
-  description: React.ReactNode;
-  
+  description: string;
+  featured?: boolean;
 }
-export function Features() {
+
+const features: Feature[] = [
+  {
+    icon: Box,
+    title: "Containerized & secure",
+    description:
+      "Every build runs in an isolated Docker container — your code never touches the host.",
+  },
+  {
+    icon: Settings2,
+    title: "Custom build commands",
+    description:
+      "Bring any framework: React, Vite, Astro, Vue, or plain static HTML.",
+  },
+  {
+    icon: Zap,
+    title: "Optimized for performance",
+    description:
+      "Artifacts served from the edge via R2 with SPA fallback and smart caching.",
+    featured: true,
+  },
+  {
+    icon: Sparkles,
+    title: "One-click deploy",
+    description:
+      "Paste a GitHub URL, set install + build commands, and ship in minutes.",
+  },
+  {
+    icon: RefreshCw,
+    title: "Instant redeploys",
+    description:
+      "Trigger a fresh build from the dashboard — we clone, rebuild, and publish.",
+  },
+];
+
+function FeatureCard({
+  icon: Icon,
+  title,
+  description,
+  featured,
+}: Feature) {
   return (
-   <>
-   <div className=" p-10 md:text-6xl text-5xl font-bold text-center ">
-Feat<span className="text-[#246BFD]">ures</span> 
-   </div>
-    <ul className="grid grid-cols-1 grid-rows-none gap-4 md:grid-cols-12 md:grid-rows-3 lg:gap-4 xl:max-h-[34rem] xl:grid-rows-2 p-10 mb-10">
-      <GridItem
-        area="md:[grid-area:1/1/2/7] xl:[grid-area:1/1/2/5]"
-        icon={<Box className="h-5 w-5 text-[#246BFD]" />}
-        title="Containerized & Secure"
-        description="Your code runs in isolated Docker containers to ensure full security."
-      />
+    <article
+      className={cn(
+        "group flex h-full flex-col rounded-lg border p-6 transition-colors lg:p-8",
+        featured
+          ? "border-brand bg-brand text-on-primary"
+          : "border-hairline bg-surface-card text-on-dark hover:border-hairline-strong"
+      )}
+    >
+      <div
+        className={cn(
+          "mb-6 flex h-11 w-11 items-center justify-center rounded-md border",
+          featured
+            ? "border-on-primary/20 bg-on-primary/10"
+            : "border-hairline bg-surface-elevated"
+        )}
+      >
+        <Icon
+          className={cn("h-5 w-5", featured ? "text-on-primary" : "text-on-dark")}
+          strokeWidth={1.75}
+        />
+      </div>
 
-      <GridItem
-        area="md:[grid-area:1/7/2/13] xl:[grid-area:2/1/3/5]"
-        icon={<Settings className="h-5 w-5 text-[#246BFD]" />}
-        title="Custom Build Commands"
-        description="Configure any framework: React, Next.js, Astro, Vue and more."
-      />
-
-      <GridItem
-        area="md:[grid-area:2/1/3/7] xl:[grid-area:1/5/3/8]"
-        icon={<Lock className="h-5 w-5 text-[#246BFD]" />}
-        title="Optimized for Performance"
-        description="Global CDN, build caching, and blazing fast previews."
-      />
-
-      <GridItem
-        area="md:[grid-area:2/7/3/13] xl:[grid-area:1/8/2/13]"
-        icon={<Sparkles className="h-5 w-5 text-[#246BFD]" />}
-        title="One-click Deploy"
-        description="Hook up GitHub and deploy instantly without complex setup."
-      />
-
-      <GridItem
-        area="md:[grid-area:3/1/4/13] xl:[grid-area:2/8/3/13]"
-        icon={<Search className="h-5 w-5 text-[#246BFD]" />}
-        title="Instant Redeploys"
-        description="Every push to your repo triggers an automated build and deploy."
-      />
-    </ul>
-   </>
+      <h3 className="text-lg font-semibold leading-snug">{title}</h3>
+      <p
+        className={cn(
+          "mt-2 flex-1 text-sm leading-relaxed",
+          featured ? "text-on-primary/75" : "text-copy"
+        )}
+      >
+        {description}
+      </p>
+    </article>
   );
 }
 
-const GridItem = ({ area, icon, title, description }: GridItemProps) => {
+export function Features() {
+  const primary = features.slice(0, 3);
+  const secondary = features.slice(3);
+
   return (
-    <li className={`min-h-[14rem] list-none ${area}`}>
-      <div className="relative h-full rounded-2xl border border-[#1E293B] p-2 transition ">
-        <GlowingEffect
-           blur={0}
-          borderWidth={3}
-          spread={80}
-          glow={true}
-          disabled={false}
-          proximity={64}
-          inactiveZone={0.01}
-        />
-        <div className="relative flex h-full flex-col justify-between gap-6 rounded-xl p-6">
-          <div className="flex flex-1 flex-col justify-between gap-3">
-            <div className="w-fit rounded-lg border border-[#1E293B] p-2 bg-[#1E293B]">
-              {icon}
-            </div>
-            <div className="space-y-3">
-              <h3 className="text-xl font-semibold text-white md:text-2xl">
-                {title}
-              </h3>
-              <p className="text-sm text-[#AFBCD5] md:text-base">
-                {description}
-              </p>
-            </div>
-          </div>
+    <section id="features" className="py-16 md:py-section">
+      <div className="mx-auto max-w-content px-5 md:px-8">
+        <div className="mx-auto max-w-2xl text-center">
+          <span className="text-caption-upper text-brand">Features</span>
+          <h2 className="mt-3 text-display-md text-on-dark">
+            Built for <span className="text-brand">modern</span> frontends
+          </h2>
+          <p className="mt-4 text-prose">
+            Everything you need to ship static sites and SPAs at scale.
+          </p>
+        </div>
+
+        {/* Top row — 3 cards */}
+        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+          {primary.map((feature) => (
+            <FeatureCard key={feature.title} {...feature} />
+          ))}
+        </div>
+
+        {/* Bottom row — 2 cards centered */}
+        <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:mx-auto lg:max-w-[calc(66.666%-12px)] lg:gap-6">
+          {secondary.map((feature) => (
+            <FeatureCard key={feature.title} {...feature} />
+          ))}
         </div>
       </div>
-    </li>
+    </section>
   );
-};
+}

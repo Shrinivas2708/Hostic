@@ -1,5 +1,6 @@
 const { heroui } = require('@heroui/theme');
 
+/** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
     "./index.html",
@@ -7,59 +8,76 @@ module.exports = {
     "./node_modules/@heroui/theme/dist/components/(avatar|toast|spinner).js"
   ],
   theme: {
-  	extend: {
-		fontFamily: {
-        poppins: ["Poppins", "sans-serif"],
+    extend: {
+      fontFamily: {
+        sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+        mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
-  		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
-  		},
-  		colors: {
-  			background: 'hsl(var(--background))',
-  			foreground: 'hsl(var(--foreground))',
-  			card: {
-  				DEFAULT: 'hsl(var(--card))',
-  				foreground: 'hsl(var(--card-foreground))'
-  			},
-  			popover: {
-  				DEFAULT: 'hsl(var(--popover))',
-  				foreground: 'hsl(var(--popover-foreground))'
-  			},
-  			primary: {
-  				DEFAULT: 'hsl(var(--primary))',
-  				foreground: 'hsl(var(--primary-foreground))'
-  			},
-  			secondary: {
-  				DEFAULT: 'hsl(var(--secondary))',
-  				foreground: 'hsl(var(--secondary-foreground))'
-  			},
-  			muted: {
-  				DEFAULT: 'hsl(var(--muted))',
-  				foreground: 'hsl(var(--muted-foreground))'
-  			},
-  			accent: {
-  				DEFAULT: 'hsl(var(--accent))',
-  				foreground: 'hsl(var(--accent-foreground))'
-  			},
-  			destructive: {
-  				DEFAULT: 'hsl(var(--destructive))',
-  				foreground: 'hsl(var(--destructive-foreground))'
-  			},
-  			border: 'hsl(var(--border))',
-  			input: 'hsl(var(--input))',
-  			ring: 'hsl(var(--ring))',
-  			chart: {
-  				'1': 'hsl(var(--chart-1))',
-  				'2': 'hsl(var(--chart-2))',
-  				'3': 'hsl(var(--chart-3))',
-  				'4': 'hsl(var(--chart-4))',
-  				'5': 'hsl(var(--chart-5))'
-  			}
-  		}
-  	}
+      borderRadius: {
+        xs: "4px",
+        sm: "6px",
+        md: "8px",
+        lg: "12px",
+        pill: "9999px",
+      },
+      colors: {
+        brand: {
+          DEFAULT: "#faff69",
+          active: "#e6eb52",
+          disabled: "#3a3a1f",
+        },
+        canvas: "#0a0a0a",
+        ink: "#ffffff",
+        copy: {
+          DEFAULT: "#cccccc",
+          strong: "#e6e6e6",
+        },
+        muted: {
+          DEFAULT: "#888888",
+          soft: "#5a5a5a",
+        },
+        hairline: {
+          DEFAULT: "#2a2a2a",
+          strong: "#3a3a3a",
+        },
+        surface: {
+          soft: "#121212",
+          card: "#1a1a1a",
+          elevated: "#242424",
+        },
+        on: {
+          primary: "#0a0a0a",
+          dark: "#ffffff",
+        },
+        success: "#22c55e",
+        warning: "#f59e0b",
+        error: "#ef4444",
+        info: "#3b82f6",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+      },
+      maxWidth: {
+        content: "1280px",
+      },
+      spacing: {
+        section: "96px",
+      },
+      letterSpacing: {
+        display: "-0.025em",
+      },
+    },
   },
-  darkMode: ["class", "class"],
+  darkMode: ["class"],
   plugins: [require("tailwindcss-animate"), heroui()],
 };

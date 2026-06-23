@@ -1,87 +1,113 @@
-// import { Button } from '@heroui/react';
-import lightSvg from "../assets/light.svg";
-import rocket from "../assets/rocket.svg";
-import { ContainerScroll } from "../components/ui/container-scroll-animation";
-import { Cover } from "../components/ui/cover";
-import video from "/hostic.mp4";
-import StepCard from "../components/Card";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../store/authStore";
+import { Button } from "../components/ui/button";
+import { CodeWindow } from "../components/ui/card";
+import { Highlighter } from "../components/ui/highlighter";
+import { HowItWorks } from "../components/HowItWorks";
 import { Features } from "../components/Feature";
-import { steps } from "../exports";
 import Contact from "../components/Contact";
 import Pricing from "../components/Pricing";
-import { useAuthStore } from "../store/authStore";
-import { useNavigate } from "react-router-dom";
+
+const stats = [
+  { value: "3", label: "Free deployments" },
+  { value: "<60s", label: "Avg build time" },
+  { value: "100%", label: "Static & SPA" },
+];
 
 const Landing = () => {
-  const {token} = useAuthStore()
-  const navigate = useNavigate()
+  const { token } = useAuthStore();
+  const navigate = useNavigate();
+
   return (
     <>
-      <div className="relative min-h-screen  text-white overflow-hidden">
-        {/* Main Content */}
-
-        <ContainerScroll
-          titleComponent={
-            <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 py-16 gap-5">
-              <h1 className="text-center text-5xl md:text-6xl font-bold leading-tight">
-                <span className="bg-[radial-gradient(ellipse_at_center,_#ffffff_30%,_#c5dcff_85%)] bg-clip-text text-transparent">
-                  Deploy your Frontend
-                  <br />
-                  <Cover>Faster</Cover> than ever
-                </span>
-              </h1>
-
-              <p className="text-[#AFBCD5] max-w-xl mb-4 text-lg">
-                Build, preview, and ship modern frontend apps with lightning
-                speed. Just push your code and let us handle the rest.
-              </p>
-              {token ? <div className="px-6 py-3 rounded-full bg-[#246BFD] text-white font-semibold shadow-[0_0_20px_rgba(36,107,253,0.4)] hover:shadow-[0_0_25px_rgba(36,107,253,0.8)] transition duration-300 flex gap-3 cursor-pointer" onClick={()=>navigate("/deployments")}>
-                 <img src={rocket} alt="" className=""/>
-                Start deploying
-              </div>: <div className="px-6 py-3 rounded-full bg-[#246BFD] text-white font-semibold shadow-[0_0_20px_rgba(36,107,253,0.4)] hover:shadow-[0_0_25px_rgba(36,107,253,0.8)] transition duration-300 flex gap-3 cursor-pointer " onClick={()=>navigate("/dashboard")}>
-                <img src={lightSvg} alt="" />
-                Get Started for Free
-              </div> }
+      {/* Hero */}
+      <section className="mx-auto max-w-content px-5 md:px-8 py-16 md:py-section">
+        <div className="grid items-center gap-12 lg:grid-cols-12">
+          <div className="lg:col-span-7">
+            <span className="mb-4 inline-block rounded-pill bg-surface-card px-3 py-1 text-caption-upper text-muted">
+              Frontend hosting platform
+            </span>
+            <h1 className="text-display-xl text-on-dark">
+  Deploy your frontend{" "}
+  <Highlighter>faster</Highlighter>{" "}
+  than ever
+</h1>
+            <p className="mt-6 max-w-xl text-prose text-lg">
+              Build, preview, and ship modern frontend apps with lightning speed.
+              Connect a Git repo and let Hostic handle the rest.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Button
+                onClick={() =>
+                  navigate(token ? "/deployments" : "/signup")
+                }
+              >
+                {token ? "Start deploying" : "Get started free"}
+              </Button>
+              <Button variant="secondary" onClick={() => navigate("/#how-it-works")}>
+                How it works
+              </Button>
             </div>
-          }
-        >
-          <video
-            src={video}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="w-full h-full object-cover rounded-2xl"
-          />
-          {/* <img src={video} alt="" className="w-full h-full object-contain rounded-2xl" /> */}
-        </ContainerScroll>
-      </div>
-      <section className="max-w mx-auto px-4 pt-24 pb-10">
-        <h2 className="md:text-6xl text-5xl font-bold text-center md:mb-12 text-white">
-          How It <span className="text-[#246BFD]">Works!?</span>
-        </h2>
-        <div className="grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1  md:p-14 py-10 gap-6   ">
-          {steps.map((step, index) => (
-            <StepCard
-              key={index}
-              step={index + 1}
-              title={step.title}
-              desc={step.desc}
-              img={step.img}
-            />
-          ))}
+            <div className="mt-12 flex flex-wrap gap-10">
+              {stats.map((stat) => (
+                <div key={stat.label}>
+                  <p className="text-stat">{stat.value}</p>
+                  <p className="mt-1 text-sm text-muted">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="lg:col-span-5">
+            <CodeWindow>
+              <pre className="text-prose leading-relaxed">
+                <span className="text-muted"># Deploy in three commands</span>
+                {"\n"}
+                <span className="text-info">$</span> git clone repo-url
+                {"\n"}
+                <span className="text-info">$</span> npm ci && npm run build
+                {"\n"}
+                <span className="text-info">$</span> hostic deploy --slug my-app
+                {"\n\n"}
+                <span className="text-success">✓</span>{" "}
+                <span className="text-copy-strong">
+                  Published at my-app.apps.hostic.dev
+                </span>
+              </pre>
+            </CodeWindow>
+          </div>
         </div>
       </section>
+
+      <HowItWorks />
+
       <Features />
       <Pricing />
+
+      {/* CTA band */}
+      <section className="mx-auto max-w-content px-5 md:px-8 py-16">
+        <div className="rounded-lg bg-brand p-10 md:p-16 text-center">
+          <h2 className="text-display-md text-on-primary">
+            Ready to deploy?
+          </h2>
+          <p className="mx-auto mt-4 max-w-lg text-on-primary/80">
+            Join Hostic and ship your next frontend project in under a minute.
+          </p>
+          <div className="mt-8">
+            <Button
+              variant="secondary"
+              className="bg-on-primary text-on-dark hover:bg-on-primary/90"
+              onClick={() => navigate(token ? "/deployments" : "/signup")}
+            >
+              {token ? "Go to deployments" : "Create free account"}
+            </Button>
+          </div>
+        </div>
+      </section>
+
       <Contact />
-      
     </>
   );
 };
-
-
-
-
 
 export default Landing;

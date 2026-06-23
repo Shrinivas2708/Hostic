@@ -1,51 +1,79 @@
-import  { useEffect } from "react";
+import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useDeploy } from "../hooks/useDeploy";
-import { BackgroundLines } from "../components/ui/background-lines";
-import {Spinner} from "@heroui/spinner";
+import { Spinner } from "@heroui/spinner";
+import { Card } from "../components/ui/card";
+import { PageContainer, PageHeader } from "../components/layout/PageContainer";
+import { Button } from "../components/ui/button";
+
 function Deployed() {
   const { id } = useParams();
   const { getImg, deploy_img, loading, deployment, fetchDeployment } =
     useDeploy();
+
   useEffect(() => {
     if (!id) return;
     getImg(id);
     fetchDeployment(id);
   }, [id]);
-  
-  console.log(deployment);
+
+  const siteUrl = `http://${deployment?.slug}.localhost:8080`;
+
   return (
-    <div >
-      <BackgroundLines>
-       
-          <div className="flex flex-col justify-center items-center border border-white/10 rounded-lg space-y-3 md:p-5 p-3 relative z-10 hover:cursor-pointer" onClick={()=>{
-            // window.open(`http://${deployment?.slug}.localhost:8080`)
-            window.open(`https://${deployment?.slug}.apps.shriii.xyz`)
-          }}>
-            {loading ? <Spinner color="default" /> : <img
-              src={deploy_img!}
-              alt=""
-              className=" lg:w-[500px] lg:h-[300px] rounded-md "
-            />}
-            
-            <div className="text-xs md:text-base">
-              <p >
-                Website successfully published at{" "}
-                <a
-                  // href={`http://${deployment?.slug}.localhost:8080`}
-                  href={`https://${deployment?.slug}.apps.shriii.xyz`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-gray-500 "
-                >
-                  {deployment?.slug}
-                </a>
-              </p>
+    <PageContainer narrow>
+      <PageHeader
+        badge="Live"
+        title="Deployment successful"
+        description="Your site is published and ready to visit."
+      />
+
+      <Card
+        padding="md"
+        className="cursor-pointer transition-colors hover:border-hairline-strong"
+        onClick={() => window.open(siteUrl)}
+      >
+        <div className="aspect-video w-full overflow-hidden rounded-md border border-hairline bg-surface-elevated">
+          {loading ? (
+            <div className="flex h-full items-center justify-center">
+              <Spinner color="default" />
             </div>
-          </div>
-     
-      </BackgroundLines>
-    </div>
+          ) : deploy_img ? (
+            <img
+              src={deploy_img}
+              alt="Site preview"
+              className="h-full w-full object-cover object-top"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-muted">
+              Preview unavailable
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 text-center">
+          <p className="text-sm text-muted">Published at</p>
+          <a
+            href={siteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 inline-block font-mono text-brand underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {deployment?.slug}.localhost:8080
+          </a>
+        </div>
+
+        <Button
+          className="mt-6 w-full"
+          onClick={(e) => {
+            e.stopPropagation();
+            window.open(siteUrl);
+          }}
+        >
+          Visit site
+        </Button>
+      </Card>
+    </PageContainer>
   );
 }
 

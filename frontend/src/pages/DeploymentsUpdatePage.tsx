@@ -4,20 +4,25 @@ import { useDeploy } from "../hooks/useDeploy";
 import { formatDate } from "../exports";
 import { addToast } from "@heroui/toast";
 import { Spinner } from "@heroui/spinner";
-// import { useDeployStore } from "../store/deployStore";
-const statusStyles: Record<string, string> = {
-  queued: " text-yellow-300 border border-yellow-300",
-  building: "text-blue-300 border border-blue-300",
-  failed: " text-red-500 border border-red-500",
-  success: " text-green-300 border border-green-300",
-};
+import { StatusBadge } from "../components/StatusBadge";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { PageContainer, PageHeader } from "../components/layout/PageContainer";
 
 export default function DeploymentDetailsPage() {
   const { id } = useParams();
-  const { fetchDeployment, fetchBuilds, deployment, builds, error, loading , redeploy,deleteDeployment} =
-    useDeploy();
-    // const {deleteDeployment} = useDeployStore()
-      const navigate = useNavigate();
+  const {
+    fetchDeployment,
+    fetchBuilds,
+    deployment,
+    builds,
+    error,
+    loading,
+    redeploy,
+    deleteDeployment,
+  } = useDeploy();
+  const navigate = useNavigate();
+
   useEffect(() => {
     if (id) {
       fetchDeployment(id);
@@ -25,152 +30,166 @@ export default function DeploymentDetailsPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
   const currentBuildName = builds.find(
     (v) => v._id === deployment?.current_build_id
   );
-  const handleDelete = async()=>{
-    if(!deployment?._id) return
-    await deleteDeployment(deployment?._id).then(()=>{
-      addToast({
-        title:"Success",
-        color:"success",
-        description:"Deployment deleted!"
-      })
-      navigate("/deployments")
-    }).catch(()=>{
-addToast({
-        title:"Error",
-        color:"danger",
-        description:"Unable to delete the deployment!"
-      })
-    })
-  }
-  const handleRedeploy = async ()=>{
-    if (!deployment?._id) return;
-  const data = await redeploy(deployment._id);
-  if (data) {
-    navigate(`/deployments/${data.deployment_id}/${data.build_name}`);
-  } else {
-    navigate(`/deployment/${deployment._id}`);
-  }
-  }
-  if (loading) return <div className="w-full h-[30rem]  flex justify-center items-center"><Spinner color="default"/></div>;
 
-  if (error) {
-    console.log(error)
+  const handleDelete = async () => {
+    if (!deployment?._id) return;
+    try {
+      await deleteDeployment(deployment._id);
+      addToast({
+        title: "Success",
+        color: "success",
+        description: "Deployment deleted!",
+      });
+      navigate("/deployments");
+    } catch {
+      addToast({
+        title: "Error",
+        color: "danger",
+        description: "Unable to delete the deployment!",
+      });
+    }
+  };
+
+  const handleRedeploy = async () => {
+    if (!deployment?._id) return;
+    const data = await redeploy(deployment._id);
+    if (data) {
+      navigate(`/deployments/${data.deployment_id}/${data.build_name}`);
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="flex flex-col items-center gap-10">
-        <div className="text-red-500 text-center mt-10">
-          Error: while fetching blogs
-        </div>
-        <span
-          className="p-2 border-[#246BFD] border w-[100px] text-center rounded-lg hover:bg-[#246BFD] cursor-pointer text-sm transition duration-300 text-[#246BFD] hover:text-white "
-          onClick={() => navigate("/deployments")}
-        >
-          Go back
-        </span>
+      <div className="flex h-[30rem] w-full items-center justify-center">
+        <Spinner color="default" />
       </div>
     );
   }
 
-  if (!deployment)
-    return <div className="text-center mt-10">Deployment not found.</div>;
+  if (error) {
+    return (
+      <PageContainer narrow className="text-center">
+        <p className="text-error">Error while fetching deployment.</p>
+        <Button
+          variant="secondary"
+          className="mt-6"
+          onClick={() => navigate("/deployments")}
+        >
+          Go back
+        </Button>
+      </PageContainer>
+    );
+  }
+
+  if (!deployment) {
+    return (
+      <PageContainer narrow className="text-center">
+        <p className="text-muted">Deployment not found.</p>
+      </PageContainer>
+    );
+  }
+
+  const siteUrl = `http://${deployment.slug}.localhost:8080`;
 
   return (
-    <div className=" py-5  flex justify-evenly md:flex-row flex-col">
-      <div className=" flex flex-col gap-3 p-3 text-lg font-medium">
-        <p className="text-xl text-center font-bold ">{deployment.slug}</p>
-        <p>
-          <span className=" text-[#918f8f]">Github repo: </span>
-          <a href={deployment.repo_url} target="_blank">
-            {deployment.repo_url.split("/")[4]}
-          </a>
-        </p>
-        <p>
-          <span className="text-lg text-[#918f8f]">Deployment branch: </span>
-          {deployment.branch}
-        </p>
-        <p>
-          <span className="text-lg text-[#918f8f]">Project type: </span>
-          {deployment.projectType}
-        </p>
-        <p>
-          <span className="text-lg text-[#918f8f]">Install commands: </span>
-          {deployment.installCommands}
-        </p>
-        <p>
-          <span className="text-lg text-[#918f8f]">Build command: </span>
-          {deployment.buildCommands}
-        </p>
-        <p>
-          <span className="text-lg text-[#918f8f]">
-            Current successful build:{" "}
-          </span>
-          {currentBuildName?.build_name}
-        </p>
-        <p>
-          <span className="text-lg text-[#918f8f]">Deployed on: </span>
-          {formatDate(deployment.createdAt)}
-        </p>
-        <div className="py-3 flex gap-3  items-center ">
-          <span
-            className="p-2 border-white border w-[100px] text-center rounded-lg hover:bg-white cursor-pointer text-sm transition duration-300 text-white hover:text-black"
-            onClick={() => 
-              window.open(`https://${deployment.slug}.apps.shriii.xyz`)
-              // window.open(`http://${deployment.slug}.localhost:8080`)
-            }
-          >
-            Visit
-          </span>
-          <span className="p-2 border-[#246BFD] border w-[100px] text-center rounded-lg hover:bg-[#246BFD] cursor-pointer text-sm transition duration-300 text-[#246BFD] hover:text-white">
-            Update
-          </span>
-          <span className="p-2 border-red-500 border w-[100px] text-center rounded-lg hover:bg-red-500 cursor-pointer text-sm transition duration-300 text-red-500 hover:text-white" onClick={()=>{handleDelete()}}>
-            Delete
-          </span>
-        </div>
-        <div className=" py-3 pr-10">
-             <p
-            className="p-2  w-full text-center rounded-lg  cursor-pointer text-sm transition duration-300 text-white bg-[#246BFD]"
-            onClick={() => handleRedeploy()}
-          >
-            Re-deploy
-          </p>
-        </div>
-      </div>
+    <PageContainer>
+      <PageHeader
+        badge="Deployment"
+        title={deployment.slug}
+        description={deployment.repo_url}
+      />
 
-      <div >
-        <h2 className="text-3xl font-semibold mt-6">Builds</h2>
-        {builds.length === 0 ? (
-          <p>No builds found.</p>
-        ) : (
-          <ul className="mt-2 space-y-2  ">
-            {builds.reverse().map((build) => (
-              <li key={build._id} className="cursor-pointer" onClick={()=>{
-                navigate(`/deployments/${deployment._id}/${build.build_name}`)
-              }}>
-                <div className="p-4 rounded-lg border border-white/10 ">
-                  <div className="flex items-center gap-2">
-                    <strong>{build.build_name}</strong>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full capitalize ${
-                        statusStyles[build.status] ||
-                        "bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {build.status}
-                    </span>
-                  </div>
-                  <p>
-                    Started: {formatDate(build.startedAt!) || "N/A"} | Finished:{" "}
-                    {formatDate(build.finishedAt!) || "N/A"}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+      <div className="grid gap-8 lg:grid-cols-2">
+        <Card padding="md" className="space-y-4">
+          <dl className="space-y-3 text-sm">
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted">Repository</dt>
+              <dd>
+                <a
+                  href={deployment.repo_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand underline"
+                >
+                  {deployment.repo_url.split("/").slice(-2).join("/")}
+                </a>
+              </dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted">Branch</dt>
+              <dd>{deployment.branch}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted">Project type</dt>
+              <dd className="capitalize">{deployment.projectType}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted shrink-0">Install</dt>
+              <dd className="font-mono text-right text-xs">{deployment.installCommands}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted shrink-0">Build</dt>
+              <dd className="font-mono text-right text-xs">{deployment.buildCommands}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted">Current build</dt>
+              <dd className="font-mono">{currentBuildName?.build_name ?? "—"}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted">Created</dt>
+              <dd>{formatDate(deployment.createdAt)}</dd>
+            </div>
+          </dl>
+
+          <div className="flex flex-wrap gap-3 border-t border-hairline pt-6">
+            <Button onClick={() => window.open(siteUrl)}>Visit site</Button>
+            <Button variant="secondary" onClick={handleRedeploy}>
+              Re-deploy
+            </Button>
+            <Button variant="danger" onClick={handleDelete}>
+              Delete
+            </Button>
+          </div>
+        </Card>
+
+        <div>
+          <h2 className="mb-4 text-lg font-semibold text-on-dark">Build history</h2>
+          {builds.length === 0 ? (
+            <p className="text-sm text-muted">No builds found.</p>
+          ) : (
+            <ul className="space-y-3">
+              {[...builds].reverse().map((build) => (
+                <li key={build._id}>
+                  <Card
+                    padding="sm"
+                    className="cursor-pointer transition-colors hover:border-hairline-strong"
+                    onClick={() =>
+                      navigate(
+                        `/deployments/${deployment._id}/${build.build_name}`
+                      )
+                    }
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-mono text-sm font-medium">
+                        {build.build_name}
+                      </span>
+                      <StatusBadge status={build.status} />
+                    </div>
+                    <p className="mt-2 text-xs text-muted">
+                      {formatDate(build.startedAt!) || "N/A"} →{" "}
+                      {formatDate(build.finishedAt!) || "N/A"}
+                    </p>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }
