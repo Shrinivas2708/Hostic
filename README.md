@@ -28,6 +28,9 @@ Hostic is a minimal, production-ready platform to deploy static and SPA frontend
 5. Socket server streams logs and status updates to the UI in realtime.
 
 ---
+## System Architecture
+<img width="1492" height="720" alt="image" src="https://github.com/user-attachments/assets/1fc2f80c-82a0-4dc4-801d-2c6d2f270a34" />
+
 
 ## Key Components (Under the Hood)
 
