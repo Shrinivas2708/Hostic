@@ -70,7 +70,7 @@ Concurrency: `buildQueue.ts` enforces `MAX_CONCURRENT = 1` by default. Scale by 
 
 ## Serving Architecture (Proxy)
 
-- Hostnames: `https://{slug}.apps.shriii.xyz`.
+- Hostnames: `https://{slug}.apps.shribuilds.in`.
 - Proxy extracts `slug` from the `Host` header and loads the corresponding `Deployment` then `Build`.
 - If the build is `queued` or `building`, serves a static "building" page.
 - If the latest build is `success`, constructs a file key as `<artifact_path><requested_path>` and fetches it from R2 via a presigned URL, streaming the response to the client. If the incoming path has no extension, SPA fallback to `/index.html`.

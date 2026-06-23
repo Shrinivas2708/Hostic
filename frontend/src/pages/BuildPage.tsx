@@ -97,6 +97,12 @@ function BuildPage() {
               <span className="text-muted">Build ID</span>
               <span className="font-mono text-on-dark">{build?.build_name}</span>
             </div>
+            {build?.triggeredBy && (
+              <div className="flex justify-between">
+                <span className="text-muted">Triggered by</span>
+                <span className="capitalize">{build.triggeredBy}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-muted">Started</span>
               <span>{formatDate(build?.startedAt || "N/A")}</span>

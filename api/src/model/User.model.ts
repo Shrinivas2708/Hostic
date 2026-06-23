@@ -16,7 +16,10 @@ const userSchema = new Schema(
     deployments_count: {
         type:Number,
         default:0
-    }
+    },
+    githubId: { type: String },
+    githubUsername: { type: String },
+    githubAccessToken: { type: String, select: false },
   },
   {
     timestamps: true,

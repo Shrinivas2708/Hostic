@@ -48,7 +48,7 @@ function getOriginalHostname(req: Request): string {
 }
 
 function extractSlug(hostname: string): string | null {
-  const suffix = ".apps.shriii.xyz";
+  const suffix = ".apps.shribuilds.in";
   return hostname.endsWith(suffix) ? hostname.slice(0, -suffix.length) : null;
 }
 

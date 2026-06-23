@@ -1,8 +1,12 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import { useGitHubStore } from "../store/githubStore";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { PageContainer, PageHeader } from "../components/layout/PageContainer";
 import { formatDate } from "../exports";
+import { Github } from "lucide-react";
 
 function Dashboard() {
   const getInitials = (username: string) =>
@@ -13,12 +17,18 @@ function Dashboard() {
       .toUpperCase();
 
   const { user, logout } = useAuthStore();
+  const { status, fetchStatus, connect } = useGitHubStore();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
 
   return (
     <PageContainer narrow>
       <PageHeader
         title="Account"
-        description="Manage your profile and deployment quota."
+        description="Manage your profile, GitHub connection, and deployment quota."
       />
 
       <Card padding="lg">
@@ -48,6 +58,14 @@ function Dashboard() {
             </dd>
           </div>
           <div className="flex justify-between">
+            <dt className="text-sm text-muted">GitHub</dt>
+            <dd className="text-sm font-medium text-on-dark">
+              {status?.connected || user?.githubConnected
+                ? `@${status?.username || user?.githubUsername}`
+                : "Not connected"}
+            </dd>
+          </div>
+          <div className="flex justify-between">
             <dt className="text-sm text-muted">Member since</dt>
             <dd className="text-sm font-medium text-on-dark">
               {formatDate(user?.createdAt || "")}
@@ -55,9 +73,28 @@ function Dashboard() {
           </div>
         </dl>
 
-        <Button variant="danger" className="mt-8" onClick={() => logout()}>
-          Sign out
-        </Button>
+        <div className="mt-8 flex flex-wrap gap-3">
+          {status?.connected || user?.githubConnected ? (
+            <Button variant="secondary" onClick={() => navigate("/deployments")}>
+              <Github className="h-4 w-4" />
+              Browse repos
+            </Button>
+          ) : (
+            <Button
+              onClick={() =>
+                connect().catch(() => {
+                  /* redirecting */
+                })
+              }
+            >
+              <Github className="h-4 w-4" />
+              Connect GitHub
+            </Button>
+          )}
+          <Button variant="danger" onClick={() => logout()}>
+            Sign out
+          </Button>
+        </div>
       </Card>
     </PageContainer>
   );

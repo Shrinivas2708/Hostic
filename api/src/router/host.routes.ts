@@ -1,12 +1,15 @@
 import { Router } from "express"
 import { verifyToken } from "../utils/tokens"
-import { deploy, redeploy, getDeployments,deleteDeployment, getBuildsForDeployment, getDeployment, getBuild, getImgForBuild } from "../controller/host.controller"
+import { deploy, redeploy, getDeployments,deleteDeployment, getBuildsForDeployment, getDeployment, getBuild, getImgForBuild, getWebhookInfo, updateAutoDeploy, regenerateWebhookSecret } from "../controller/host.controller"
 const hostRouter = Router()
 hostRouter.use(verifyToken)
 hostRouter.post("/",deploy)
 hostRouter.post("/redeploy",redeploy)
 hostRouter.get("/",getDeployments)
 hostRouter.get("/deployment",getDeployment)
+hostRouter.get("/webhook", getWebhookInfo)
+hostRouter.patch("/auto-deploy", updateAutoDeploy)
+hostRouter.post("/webhook/regenerate", regenerateWebhookSecret)
 hostRouter.delete("/delete",deleteDeployment)
 hostRouter.get("/builds",getBuildsForDeployment)
 hostRouter.get("/build",getBuild)

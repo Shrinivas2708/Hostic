@@ -10,7 +10,8 @@ export type BuildJob = {
   project_type: ProjectType;
   buildCommands?: string;
   installCommands?:string;
-  buildDir?:string
+  buildDir?:string;
+  branch?: string;
 };
 
 const q: BuildJob[] = [];

@@ -6,7 +6,9 @@ type User = {
   email: string;
   avatarUrl?: string;
   deployments_count:number;
-  createdAt : string
+  createdAt : string;
+  githubConnected?: boolean;
+  githubUsername?: string;
 };
 
 type AuthStore = {

@@ -24,6 +24,7 @@ export async function processJob(job: BuildJob): Promise<string[]> {
     installCommands,
     buildCommands,
     buildDir,
+    branch,
   } = job;
 
   const logger = makeBuildLogger(buildId);
@@ -53,10 +54,11 @@ export async function processJob(job: BuildJob): Promise<string[]> {
     // logger.log(`📁 Workspace ready: ${workDir}`);
     logger.log(`📁 Workspace ready to install and build`);
 
-    // Clone the repo
+    // Clone the repo (specific branch)
+    const branch = job.branch || "main";
     logger.log("📥 Cloning repository...");
-    await git().clone(repo_url, workDir);
-    logger.log("✅ Repository cloned successfully.");
+    await git().clone(repo_url, workDir, ["--branch", branch, "--single-branch"]);
+    logger.log(`✅ Repository cloned successfully (branch: ${branch}).`);
 
     // Step A: Install dependencies
     const buildDir = job.buildDir || "./";

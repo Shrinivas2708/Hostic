@@ -17,7 +17,7 @@ function Deployed() {
     fetchDeployment(id);
   }, [id]);
 
-  const siteUrl = `http://${deployment?.slug}.localhost:8080`;
+  const siteUrl = `https://${deployment?.slug}.apps.shribuilds.in`;
 
   return (
     <PageContainer narrow>
@@ -59,7 +59,7 @@ function Deployed() {
             className="mt-1 inline-block font-mono text-brand underline"
             onClick={(e) => e.stopPropagation()}
           >
-            {deployment?.slug}.localhost:8080
+            {deployment?.slug}.apps.shribuilds.in
           </a>
         </div>
 

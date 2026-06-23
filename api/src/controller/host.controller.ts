@@ -1,11 +1,27 @@
 import { NextFunction, Request, Response } from "express";
 import { generateSlug } from "random-word-slugs";
 import { Deployments, ProjectType } from "../model/Deployments.model";
-import { Builds, BuildStatus } from "../model/Builds.model";
+import { BuildStatus } from "../model/Builds.model";
 import { User } from "../model/User.model";
-import { enqueueBuild } from "../utils/buildQueue";
-import shortid from "shortid";
 import { captureAndUploadScreenshot, Delete } from "../utils/imagesHandle";
+import {
+  generateWebhookSecret,
+  triggerDeploymentBuild,
+} from "../utils/triggerBuild";
+import { Builds } from "../model/Builds.model";
+import {
+  setupGitHubWebhookForDeployment,
+  removeGitHubWebhookForDeployment,
+  setGitHubWebhookActive,
+  refreshGitHubWebhookSecret,
+} from "../utils/githubWebhooks";
+
+function getApiPublicUrl(): string {
+  return (process.env.API_PUBLIC_URL || "http://localhost:5000").replace(
+    /\/$/,
+    ""
+  );
+}
 
 export const deploy = async (
   req: Request,
@@ -18,16 +34,22 @@ export const deploy = async (
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const { repo_url, project_type, buildCommands, installCommands, buildDir } =
-      req.body as {
-        repo_url: string;
-        project_type: ProjectType;
-        buildCommands?: string;
-        installCommands?: string;
-        buildDir?: string;
-      };
+    const {
+      repo_url,
+      project_type,
+      buildCommands,
+      installCommands,
+      buildDir,
+      branch,
+    } = req.body as {
+      repo_url: string;
+      project_type: ProjectType;
+      buildCommands?: string;
+      installCommands?: string;
+      buildDir?: string;
+      branch?: string;
+    };
 
-    // Enforce user deployment quota
     const incResult = await User.updateOne(
       { _id: user_id, deployments_count: { $lt: 3 } },
       { $inc: { deployments_count: 1 } }
@@ -46,53 +68,53 @@ export const deploy = async (
       buildCommands,
       installCommands,
       buildDir,
+      branch: branch?.trim() || "main",
+      autoDeploy: true,
+      webhookSecret: generateWebhookSecret(),
     });
 
-    // Create build row with short build_name
-    const buildName = shortid.generate();
-    const build = await Builds.create({
-      deployment_id: deployment._id,
-      build_name: buildName,
-      status: BuildStatus.Queued,
-    });
-await Deployments.updateOne({_id:deployment._id},
- 
-      { $inc: { buildNo: 1 } }
-)
     try {
-      console.log(`${installCommands} && ${buildCommands}`);
-      // Queue job for worker
-      enqueueBuild({
-        buildId: build.build_name,
-        deploymentId: deployment._id.toString(),
-        userId: user_id.toString(),
-        repo_url,
+      const result = await triggerDeploymentBuild(deployment, {
+        triggeredBy: "manual",
+      });
+
+      if (!result.ok) {
+        await Deployments.findByIdAndDelete(deployment._id);
+        await User.updateOne(
+          { _id: user_id },
+          { $inc: { deployments_count: -1 } }
+        );
+        return res.status(500).json({ message: result.reason });
+      }
+
+      const build = await Builds.findOne({ build_name: result.build_name });
+
+      await setupGitHubWebhookForDeployment(deployment, user_id);
+
+      const refreshed = await Deployments.findById(deployment._id);
+
+      res.json({
+        deployment_id: deployment._id,
+        build_id: build?._id,
+        build_name: result.build_name,
         slug,
-        project_type,
-        buildCommands,
-        installCommands,
-        buildDir,
+        status: result.status,
+        webhook_url: `${getApiPublicUrl()}/api/webhooks/github/${deployment.webhookSecret}`,
+        github_webhook_managed: refreshed?.githubWebhookManaged ?? false,
       });
     } catch (err) {
-      // Roll back deployments_count if enqueue fails
+      await Deployments.findByIdAndDelete(deployment._id);
       await User.updateOne(
         { _id: user_id },
         { $inc: { deployments_count: -1 } }
       );
       throw err;
     }
-
-    res.json({
-      deployment_id: deployment._id,
-      build_id: build._id,
-      build_name: buildName,
-      slug,
-      status: BuildStatus.Queued,
-    });
   } catch (err) {
     next(err);
   }
 };
+
 export const redeploy = async (
   req: Request,
   res: Response,
@@ -104,68 +126,151 @@ export const redeploy = async (
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const { deployment_id } = req.body as {
-      deployment_id: string;
-    };
+    const { deployment_id } = req.body as { deployment_id: string };
 
-    // Verify deployment exists and belongs to user
     const deployment = await Deployments.findOne({
       _id: deployment_id,
       user_id,
     });
-    
+
     if (!deployment) {
       return res
         .status(404)
         .json({ message: "Deployment not found or unauthorized" });
     }
-if(deployment.buildNo! > 2 ){
-res.status(400).json({
-  message:"Max redeploy reached!"
-})
-}
-    // Create new build row with short build_name
-    const buildName = shortid.generate();
-    const build = await Builds.create({
-      deployment_id: deployment._id,
-      build_name: buildName,
-      status: BuildStatus.Queued,
-    });
-await Deployments.updateOne({_id:deployment_id},
- 
-      { $inc: { buildNo: 1 } }
-)
-    try {
-      console.log(
-        `${deployment.installCommands} && ${deployment.buildCommands}`
-      );
-      // Queue job for worker with existing deployment details
-      await enqueueBuild({
-        buildId: build.build_name,
-        deploymentId: deployment._id.toString(),
-        userId: user_id.toString(),
-        repo_url: deployment.repo_url,
-        slug: deployment.slug,
-        project_type: deployment.projectType,
-        buildCommands: deployment.buildCommands,
-        installCommands: deployment.installCommands,
-        buildDir: deployment.buildDir,
-      });
 
-      res.json({
-        deployment_id: deployment._id,
-        build_id: build._id,
-        build_name: buildName,
-        slug: deployment.slug,
-        status: BuildStatus.Queued,
-      });
-    } catch (err) {
-      throw err;
+    const result = await triggerDeploymentBuild(deployment, {
+      triggeredBy: "manual",
+    });
+
+    if (!result.ok) {
+      return res.status(400).json({ message: result.reason });
     }
+
+    const build = await Builds.findOne({ build_name: result.build_name });
+
+    res.json({
+      deployment_id: deployment._id,
+      build_id: build?._id,
+      build_name: result.build_name,
+      slug: deployment.slug,
+      status: result.status,
+    });
   } catch (err) {
     next(err);
   }
 };
+
+export const getWebhookInfo = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const user_id = req.id;
+    const { deployment_id } = req.query;
+
+    const deployment = await Deployments.findOne({
+      _id: deployment_id,
+      user_id,
+    });
+
+    if (!deployment) {
+      return res.status(404).json({ message: "Deployment not found" });
+    }
+
+    if (!deployment.webhookSecret) {
+      deployment.webhookSecret = generateWebhookSecret();
+      await deployment.save();
+    }
+
+    const webhookUrl = `${getApiPublicUrl()}/api/webhooks/github/${deployment.webhookSecret}`;
+
+    res.status(200).json({
+      webhook_url: webhookUrl,
+      webhook_secret: deployment.webhookSecret,
+      auto_deploy: deployment.autoDeploy ?? true,
+      branch: deployment.branch,
+      last_webhook_at: deployment.lastWebhookAt,
+      github_webhook_managed: deployment.githubWebhookManaged ?? false,
+      github_repo: deployment.githubRepoFullName ?? null,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateAutoDeploy = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const user_id = req.id;
+    const { deployment_id, auto_deploy } = req.body as {
+      deployment_id: string;
+      auto_deploy: boolean;
+    };
+
+    const deployment = await Deployments.findOneAndUpdate(
+      { _id: deployment_id, user_id },
+      { autoDeploy: auto_deploy },
+      { new: true }
+    );
+
+    if (!deployment) {
+      return res.status(404).json({ message: "Deployment not found" });
+    }
+
+    if (deployment.githubWebhookManaged) {
+      await setGitHubWebhookActive(deployment, user_id!, auto_deploy);
+    }
+
+    res.status(200).json({
+      message: "Auto-deploy updated",
+      auto_deploy: deployment.autoDeploy,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const regenerateWebhookSecret = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const user_id = req.id;
+    const { deployment_id } = req.body as { deployment_id: string };
+
+    const deployment = await Deployments.findOne({
+      _id: deployment_id,
+      user_id,
+    });
+
+    if (!deployment) {
+      return res.status(404).json({ message: "Deployment not found" });
+    }
+
+    const newSecret = generateWebhookSecret();
+    deployment.webhookSecret = newSecret;
+    await deployment.save();
+
+    if (deployment.githubWebhookManaged && user_id) {
+      await refreshGitHubWebhookSecret(deployment, user_id, newSecret);
+    }
+
+    res.status(200).json({
+      message: "Webhook secret regenerated",
+      webhook_url: `${getApiPublicUrl()}/api/webhooks/github/${deployment.webhookSecret}`,
+      webhook_secret: deployment.webhookSecret,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getDeployments = async (
   req: Request,
   res: Response,
@@ -173,7 +278,9 @@ export const getDeployments = async (
 ) => {
   const user_id = req.id;
   try {
-    const deployments = await Deployments.find({ user_id }).select("_id slug img_url");
+    const deployments = await Deployments.find({ user_id }).select(
+      "_id slug img_url autoDeploy"
+    );
     if (!deployments) {
       res.status(401).json({ meesage: "No deployments!" });
     }
@@ -182,6 +289,7 @@ export const getDeployments = async (
     next(error);
   }
 };
+
 export const getDeployment = async (
   req: Request,
   res: Response,
@@ -193,7 +301,6 @@ export const getDeployment = async (
     const deployment = await Deployments.findOne({
       _id: deployment_id,
       user_id: user_id,
-
     });
     if (!deployment) {
       res.status(401).json({ meesage: "No deployments!" });
@@ -221,6 +328,7 @@ export const getBuild = async (
     next(error);
   }
 };
+
 export const deleteDeployment = async (
   req: Request,
   res: Response,
@@ -228,29 +336,44 @@ export const deleteDeployment = async (
 ) => {
   const user_id = req.id;
   const { deployment_id } = req.body;
-  console.log(deployment_id);
+
+  if (!user_id || !deployment_id) {
+    return res.status(400).json({ message: "deployment_id is required" });
+  }
+
   try {
-    const deployments = await Deployments.findByIdAndDelete({
+    const deployment = await Deployments.findOneAndDelete({
       _id: deployment_id,
-    });
-    //  console.log(deployments)
-    await Builds.deleteMany({
-      deployment_id,
+      user_id,
     });
 
-    if(deployments?.img_id){
-      await Delete(deployments?.img_id)
+    if (!deployment) {
+      return res.status(404).json({ message: "Deployment not found" });
     }
-    if (!deployments) {
-      res.status(401).json({ meesage: "Such deployment doesnt exists!" });
-      return;
+
+    await removeGitHubWebhookForDeployment(deployment, user_id);
+
+    await Builds.deleteMany({ deployment_id });
+
+    if (deployment.img_id) {
+      try {
+        await Delete(deployment.img_id);
+      } catch (err) {
+        console.warn("⚠️ Failed to delete preview image:", err);
+      }
     }
-    res.status(200).json({ message: "Deployment deleted successfully!" });
-    return;
+
+    await User.updateOne(
+      { _id: user_id, deployments_count: { $gt: 0 } },
+      { $inc: { deployments_count: -1 } }
+    );
+
+    return res.status(200).json({ message: "Deployment deleted successfully!" });
   } catch (error) {
     next(error);
   }
 };
+
 export const getBuildsForDeployment = async (
   req: Request,
   res: Response,
@@ -270,6 +393,7 @@ export const getBuildsForDeployment = async (
     next(error);
   }
 };
+
 export const getImgForBuild = async (
   req: Request,
   res: Response,
@@ -284,16 +408,16 @@ export const getImgForBuild = async (
 
   try {
     const Deployment = await Deployments.findById(deployment_id);
-    if (!Deployment) return res.status(404).json({ error: "Deployment not found" });
+    if (!Deployment)
+      return res.status(404).json({ error: "Deployment not found" });
 
     const Build = await Builds.findById(Deployment.current_build_id);
     if (!Build) return res.status(404).json({ error: "Build not found" });
 
     const name = `${Deployment.slug}&${Build.build_name}`;
-    const url = `http://${Deployment.slug}.localhost:8080`;
-    // const url = `https://${Deployment.slug}.apps.shriii.xyz`;
+    const url = `https://${Deployment.slug}.apps.shribuilds.in`;
+    // const url = `http://${Deployment.slug}.localhost:8080`;
 
-    // ✅ IF image already exists AND build_id is the same as last image build, return early
     if (
       Deployment.img_url &&
       Deployment.img_id &&
@@ -305,7 +429,6 @@ export const getImgForBuild = async (
       });
     }
 
-    // 🧹 Clean up old image if any
     if (Deployment.img_id) {
       try {
         await Delete(Deployment.img_id);
@@ -314,7 +437,6 @@ export const getImgForBuild = async (
       }
     }
 
-    // 📸 Generate and Upload new screenshot
     try {
       const data = await captureAndUploadScreenshot(url, name);
       await Deployments.updateOne(
@@ -322,7 +444,7 @@ export const getImgForBuild = async (
         {
           img_url: data.url,
           img_id: data.fileId,
-          image_build_id: Build._id, // ✅ Store which build the image belongs to
+          image_build_id: Build._id,
         }
       );
       return res.status(200).json({
@@ -338,5 +460,3 @@ export const getImgForBuild = async (
     return next(err);
   }
 };
-
-

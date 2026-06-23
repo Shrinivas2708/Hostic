@@ -16,7 +16,7 @@ Hostic is a minimal, production-ready platform to deploy static and SPA frontend
 
 - `api/` — REST API (Express + MongoDB). Owns users, deployments, builds. Orchestrates builds and publishes logs/status to Redis.
 - `socket/` — WebSocket server (Socket.IO). Subscribes to Redis channels and pushes realtime logs/status to clients.
-- `proxy/` — Public edge proxy (Express). Serves each deployment at `https://{slug}.apps.shriii.xyz` by streaming artifacts from R2.
+- `proxy/` — Public edge proxy (Express). Serves each deployment at `https://{slug}.apps.shribuilds.in` by streaming artifacts from R2.
 - `frontend/` — React app for authentication, deployment creation, logs, and status.
 
 ### High-level Flow
@@ -52,7 +52,7 @@ Hostic is a minimal, production-ready platform to deploy static and SPA frontend
 
 ### Serving Layer (`proxy/`)
 
-- Resolves `slug` from `Host` header `*.apps.shriii.xyz`.
+- Resolves `slug` from `Host` header `*.apps.shribuilds.in`.
 - Looks up current successful build; if building, serves `public/building.html`; else streams files from R2 using signed URLs, with SPA fallback.
 
 ### Realtime (`socket/`)
@@ -82,6 +82,11 @@ Base: `/api`
 - `GET /host/builds?deployment_id=...` — list builds (auth)
 - `GET /host/build?build_name=...` — get build by name (auth)
 - `POST /host/getimg` — generate or return preview image for latest build (auth)
+- `GET /host/webhook?deployment_id=...` — webhook URL + secret for GitHub auto-deploy (auth)
+- `PATCH /host/auto-deploy` — enable/disable auto-deploy `{ deployment_id, auto_deploy }` (auth)
+- `POST /host/webhook/regenerate` — rotate webhook secret (auth)
+
+- `POST /api/webhooks/github/:webhookSecret` — GitHub push webhook (no JWT; HMAC verified)
 
 ---
 
@@ -112,6 +117,7 @@ R2_SECRET_ACCESS_KEY=<r2-secret>
 IMAGEKIT_PUBLIC_KEY=...
 IMAGEKIT_PRIVATE_KEY=...
 IMAGEKIT_URL_ENDPOINT=...
+API_PUBLIC_URL=https://api.shribuilds.in
 ```
 
 Proxy (`proxy/.env`):
@@ -167,7 +173,7 @@ cd frontend && npm run dev
    - Install commands (e.g., `npm ci`)
    - Build commands (e.g., `npm run build`)
    - Optional build directory (e.g., `frontend`)
-3. Watch logs live; once status is `success`, your site is at `https://{slug}.apps.shriii.xyz`.
+3. Watch logs live; once status is `success`, your site is at `https://{slug}.apps.shribuilds.in`.
 
 ---
 

@@ -71,7 +71,7 @@ const Landing = () => {
                 {"\n\n"}
                 <span className="text-success">✓</span>{" "}
                 <span className="text-copy-strong">
-                  Published at my-app.apps.hostic.dev
+                  Published at my-app.apps.shribuilds.in
                 </span>
               </pre>
             </CodeWindow>

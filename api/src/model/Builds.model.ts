@@ -14,6 +14,7 @@ export interface IBuild extends Document {
   startedAt?: Date;
   finishedAt?: Date;
   duration?: number;
+  triggeredBy?: "manual" | "webhook";
 }
 
 const buildsSchema = new Schema<IBuild>(
@@ -34,7 +35,8 @@ const buildsSchema = new Schema<IBuild>(
     artifact_path: { type: String, default: "" },
     startedAt: Date,
     finishedAt: Date,
-    duration: { type: Number, default: 0 }, // compute on finish if you want
+    duration: { type: Number, default: 0 },
+    triggeredBy: { type: String, enum: ["manual", "webhook"], default: "manual" },
   },
   { timestamps: true }
 );

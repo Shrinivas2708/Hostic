@@ -7,6 +7,7 @@ export enum ProjectType {
 
 
 export interface IDeployment extends Document {
+  _id: mongoose.Types.ObjectId;
   user_id: mongoose.Types.ObjectId;
   repo_url: string;
   branch: string;
@@ -20,6 +21,12 @@ export interface IDeployment extends Document {
   img_id?:string;
   image_build_id?:mongoose.Types.ObjectId | null;
   buildNo?:number;
+  autoDeploy?: boolean;
+  webhookSecret?: string;
+  lastWebhookAt?: Date;
+  githubWebhookId?: number;
+  githubRepoFullName?: string;
+  githubWebhookManaged?: boolean;
 }
 
 const deploymentsSchema = new Schema<IDeployment>(
@@ -42,7 +49,13 @@ const deploymentsSchema = new Schema<IDeployment>(
     image_build_id: {
   type: mongoose.Schema.Types.ObjectId,
   ref: 'Builds',
-}
+},
+    autoDeploy: { type: Boolean, default: true },
+    webhookSecret: { type: String, unique: true, sparse: true, index: true },
+    lastWebhookAt: { type: Date },
+    githubWebhookId: { type: Number },
+    githubRepoFullName: { type: String },
+    githubWebhookManaged: { type: Boolean, default: false },
 
   },
   { timestamps: true }
