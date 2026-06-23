@@ -100,7 +100,7 @@ function Deploy() {
         description="Set install and build commands for your project."
       />
 
-      <Card padding="lg" className="space-y-6">
+      <Card padding="md" className="space-y-4">
         <div>
           <Label htmlFor="repo">Repository</Label>
           <Input

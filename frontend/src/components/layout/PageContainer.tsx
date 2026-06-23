@@ -10,7 +10,7 @@ export function PageContainer({ children, className, narrow }: PageContainerProp
   return (
     <div
       className={cn(
-        "mx-auto w-full px-5 md:px-8 py-10 md:py-section",
+        "mx-auto w-full px-5 md:px-8 py-6 md:py-8",
         narrow ? "max-w-lg" : "max-w-content",
         className
       )}
@@ -30,14 +30,18 @@ export function PageHeader({
   badge?: string;
 }) {
   return (
-    <div className="mb-10">
+    <div className="mb-6">
       {badge && (
-        <span className="mb-3 inline-block rounded-pill bg-brand px-3 py-1 text-caption-upper text-on-primary">
+        <span className="mb-2 inline-block rounded-pill bg-brand px-2.5 py-0.5 text-caption-upper text-on-primary">
           {badge}
         </span>
       )}
-      <h1 className="text-display-md text-on-dark">{title}</h1>
-      {description && <p className="mt-3 max-w-2xl text-prose">{description}</p>}
+      <h1 className="text-2xl font-bold tracking-tight text-on-dark md:text-3xl">
+        {title}
+      </h1>
+      {description && (
+        <p className="mt-1.5 max-w-2xl text-sm text-copy">{description}</p>
+      )}
     </div>
   );
 }
