@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDeploy } from "../hooks/useDeploy";
 import { formatDate } from "../exports";
@@ -7,9 +7,39 @@ import { Spinner } from "@heroui/spinner";
 import { StatusBadge } from "../components/StatusBadge";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Select } from "../components/ui/select";
 import { PageContainer, PageHeader } from "../components/layout/PageContainer";
 import { getDeploymentUrl } from "../lib/config";
 import { Github, Zap } from "lucide-react";
+
+type SettingsForm = {
+  branch: string;
+  buildDir: string;
+  project_type: string;
+  installCommands: string;
+  buildCommands: string;
+  auto_deploy: boolean;
+};
+
+function settingsFromDeployment(d: {
+  branch: string;
+  buildDir?: string;
+  projectType: string;
+  installCommands?: string;
+  buildCommands?: string;
+  autoDeploy?: boolean;
+}): SettingsForm {
+  return {
+    branch: d.branch || "main",
+    buildDir: d.buildDir || "./",
+    project_type: d.projectType,
+    installCommands: d.installCommands ?? "",
+    buildCommands: d.buildCommands ?? "",
+    auto_deploy: d.autoDeploy ?? true,
+  };
+}
 
 export default function DeploymentDetailsPage() {
   const { id } = useParams();
@@ -22,8 +52,11 @@ export default function DeploymentDetailsPage() {
     loading,
     redeploy,
     deleteDeployment,
+    updateDeployment,
   } = useDeploy();
   const navigate = useNavigate();
+  const [settings, setSettings] = useState<SettingsForm | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -32,6 +65,12 @@ export default function DeploymentDetailsPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (deployment) {
+      setSettings(settingsFromDeployment(deployment));
+    }
+  }, [deployment]);
 
   const currentBuildName = builds.find(
     (v) => v._id === deployment?.current_build_id
@@ -64,7 +103,61 @@ export default function DeploymentDetailsPage() {
     }
   };
 
-  if (loading) {
+  const handleSaveSettings = async () => {
+    if (!deployment?._id || !settings) return;
+
+    if (!settings.buildCommands.trim()) {
+      addToast({
+        title: "Error",
+        description: "Build command is required",
+        color: "danger",
+      });
+      return;
+    }
+    if (!settings.installCommands.trim()) {
+      addToast({
+        title: "Error",
+        description: "Install command is required",
+        color: "danger",
+      });
+      return;
+    }
+    if (!settings.project_type) {
+      addToast({
+        title: "Error",
+        description: "Project type is required",
+        color: "danger",
+      });
+      return;
+    }
+
+    setSaving(true);
+    const result = await updateDeployment(deployment._id, {
+      branch: settings.branch,
+      buildDir: settings.buildDir,
+      project_type: settings.project_type,
+      installCommands: settings.installCommands,
+      buildCommands: settings.buildCommands,
+      auto_deploy: settings.auto_deploy,
+    });
+    setSaving(false);
+
+    if (result) {
+      addToast({
+        title: "Settings saved",
+        description: "Redeploy to apply build changes.",
+        color: "success",
+      });
+    } else {
+      addToast({
+        title: "Error",
+        description: "Could not update deployment settings",
+        color: "danger",
+      });
+    }
+  };
+
+  if (loading && !deployment) {
     return (
       <div className="flex h-[30rem] w-full items-center justify-center">
         <Spinner color="default" />
@@ -87,7 +180,7 @@ export default function DeploymentDetailsPage() {
     );
   }
 
-  if (!deployment) {
+  if (!deployment || !settings) {
     return (
       <PageContainer narrow className="text-center">
         <p className="text-muted">Deployment not found.</p>
@@ -109,6 +202,9 @@ export default function DeploymentDetailsPage() {
       <div className="grid gap-8 lg:grid-cols-2">
         <div className="space-y-6">
           <Card padding="md" className="space-y-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+              Overview
+            </h2>
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">Repository</dt>
@@ -124,30 +220,6 @@ export default function DeploymentDetailsPage() {
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-muted">Branch</dt>
-                <dd className="font-mono">{deployment.branch}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-muted">Directory</dt>
-                <dd className="font-mono">{deployment.buildDir || "./"}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-muted">Project type</dt>
-                <dd className="capitalize">{deployment.projectType}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted shrink-0">Install</dt>
-                <dd className="font-mono text-right text-xs">
-                  {deployment.installCommands}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted shrink-0">Build</dt>
-                <dd className="font-mono text-right text-xs">
-                  {deployment.buildCommands}
-                </dd>
-              </div>
-              <div className="flex justify-between">
                 <dt className="text-muted">Current build</dt>
                 <dd className="font-mono">
                   {currentBuildName?.build_name ?? "—"}
@@ -159,51 +231,7 @@ export default function DeploymentDetailsPage() {
               </div>
             </dl>
 
-            {autoDeployActive ? (
-              <div className="flex items-start gap-2 rounded-md border border-brand/25 bg-brand/5 px-3 py-2.5 text-sm">
-                <Zap className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-                <div>
-                  <p className="font-medium text-on-dark">Auto-deploy enabled</p>
-                  <p className="mt-0.5 text-xs text-muted">
-                    Pushes to{" "}
-                    <span className="font-mono text-on-dark">
-                      {deployment.branch}
-                    </span>{" "}
-                    on{" "}
-                    <span className="font-mono text-on-dark">
-                      {deployment.githubRepoFullName ??
-                        deployment.repo_url.split("/").slice(-2).join("/")}
-                    </span>{" "}
-                    trigger a new build automatically.
-                  </p>
-                  {deployment.lastWebhookAt && (
-                    <p className="mt-1 text-xs text-muted">
-                      Last push deploy: {formatDate(deployment.lastWebhookAt)}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start gap-2 rounded-md border border-hairline bg-surface-elevated px-3 py-2.5 text-sm">
-                <Github className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
-                <div>
-                  <p className="font-medium text-on-dark">Auto-deploy off</p>
-                  <p className="mt-0.5 text-xs text-muted">
-                    Connect GitHub and redeploy from a linked repo to enable
-                    push-to-deploy.
-                  </p>
-                  <Button
-                    variant="secondary"
-                    className="mt-2 h-8 px-3 text-xs"
-                    onClick={() => navigate("/deployments")}
-                  >
-                    Connect GitHub
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-3 border-t border-hairline pt-6">
+            <div className="flex flex-wrap gap-3 border-t border-hairline pt-4">
               <Button onClick={() => window.open(siteUrl)}>Visit site</Button>
               <Button variant="secondary" onClick={handleRedeploy}>
                 Re-deploy
@@ -212,6 +240,118 @@ export default function DeploymentDetailsPage() {
                 Delete
               </Button>
             </div>
+          </Card>
+
+          <Card padding="md" className="space-y-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+              Build settings
+            </h2>
+
+            <div>
+              <Label htmlFor="branch">Branch</Label>
+              <Input
+                id="branch"
+                className="mt-2 font-mono text-sm"
+                value={settings.branch}
+                onChange={(e) =>
+                  setSettings((s) => s && { ...s, branch: e.target.value })
+                }
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="build-dir">Directory</Label>
+              <Input
+                id="build-dir"
+                className="mt-2 font-mono text-sm"
+                placeholder="./"
+                value={settings.buildDir}
+                onChange={(e) =>
+                  setSettings((s) => s && { ...s, buildDir: e.target.value })
+                }
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="project-type">Project type</Label>
+              <Select
+                id="project-type"
+                className="mt-2"
+                value={settings.project_type}
+                onChange={(e) =>
+                  setSettings((s) => s && { ...s, project_type: e.target.value })
+                }
+              >
+                <option value="react">React</option>
+                <option value="vite">Vite</option>
+                <option value="static">Static</option>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="install">Install command</Label>
+              <Input
+                id="install"
+                className="mt-2 font-mono text-sm"
+                value={settings.installCommands}
+                onChange={(e) =>
+                  setSettings((s) => s && { ...s, installCommands: e.target.value })
+                }
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="build">Build command</Label>
+              <Input
+                id="build"
+                className="mt-2 font-mono text-sm"
+                value={settings.buildCommands}
+                onChange={(e) =>
+                  setSettings((s) => s && { ...s, buildCommands: e.target.value })
+                }
+              />
+            </div>
+
+            {autoDeployActive ? (
+              <label className="flex cursor-pointer items-start gap-3 rounded-md border border-brand/25 bg-brand/5 px-3 py-2.5 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1 accent-brand"
+                  checked={settings.auto_deploy}
+                  onChange={(e) =>
+                    setSettings((s) => s && { ...s, auto_deploy: e.target.checked })
+                  }
+                />
+                <span>
+                  <span className="flex items-center gap-1.5 font-medium text-on-dark">
+                    <Zap className="h-4 w-4 text-brand" />
+                    Auto-deploy on push
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted">
+                    Push to{" "}
+                    <span className="font-mono">{settings.branch}</span> on{" "}
+                    {deployment.githubRepoFullName ??
+                      deployment.repo_url.split("/").slice(-2).join("/")}
+                  </span>
+                </span>
+              </label>
+            ) : (
+              <div className="flex items-start gap-2 rounded-md border border-hairline bg-surface-elevated px-3 py-2.5 text-sm">
+                <Github className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
+                <p className="text-xs text-muted">
+                  Auto-deploy is available when this deployment is linked to
+                  GitHub via the repo picker.
+                </p>
+              </div>
+            )}
+
+            <Button
+              onClick={handleSaveSettings}
+              loading={saving}
+              className="w-full"
+            >
+              Save settings
+            </Button>
           </Card>
         </div>
 

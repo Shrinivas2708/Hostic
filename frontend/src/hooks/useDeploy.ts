@@ -14,6 +14,7 @@ export const useDeploy = () => {
     createDeployment,
     redeploy,
     deleteDeployment,
+    updateDeployment,
     fetchDeployment,
     deployment,
     build,
@@ -67,7 +68,11 @@ export const useDeploy = () => {
     createDeployment: (data: Parameters<typeof createDeployment>[0]) =>
       safeCall<Deployed>(() => createDeployment(data)), // ✅ Typed return
     redeploy: (id: string) => safeCall(() => redeploy(id)),
-    deleteDeployment: (slug: string) => safeCall(() => deleteDeployment(slug)),
+    deleteDeployment: (id: string) => safeCall(() => deleteDeployment(id)),
+    updateDeployment: (
+      id: string,
+      settings: Parameters<typeof updateDeployment>[1]
+    ) => safeCall(() => updateDeployment(id, settings)),
     fetchBuild: (build_name: string) => safeCall(() => fetchBuild(build_name)),
     getImg:(id:string) => safeCall(()=> getImg(id)),
   };

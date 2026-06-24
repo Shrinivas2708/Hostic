@@ -22,7 +22,6 @@ export default function DeploymentsPage() {
   const [isValid, setIsValid] = useState(true);
   const [clicked, setClicked] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [showManualUrl, setShowManualUrl] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -139,43 +138,36 @@ export default function DeploymentsPage() {
       )}
 
       <div className="border-t border-hairline pt-6">
-        <button
-          type="button"
-          onClick={() => setShowManualUrl((v) => !v)}
-          className="text-sm text-muted underline hover:text-on-dark"
-        >
-          {showManualUrl ? "Hide manual deploy" : "Deploy from public URL instead"}
-        </button>
-
-        {showManualUrl && (
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start">
-            <div className="flex-1">
-              <Input
-                placeholder="https://github.com/user/repo"
-                className={clsx(
-                  clicked && !isValid && "border-error focus-visible:ring-error"
-                )}
-                onChange={(e) => {
-                  setClicked(false);
-                  setUrl(e.target.value);
-                  setIsValid(true);
-                }}
-                value={url}
-                onKeyDown={(e) => e.key === "Enter" && handleManualDeploy()}
-              />
-              {clicked && !isValid && (
-                <p className="mt-2 text-sm text-error">Enter a valid GitHub repo URL</p>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
+          Deploy from public URL
+        </h2>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+          <div className="flex-1">
+            <Input
+              placeholder="https://github.com/user/repo"
+              className={clsx(
+                clicked && !isValid && "border-error focus-visible:ring-error"
               )}
-            </div>
-            <Button
-              onClick={handleManualDeploy}
-              variant="secondary"
-              className="shrink-0"
-            >
-              Deploy from URL
-            </Button>
+              onChange={(e) => {
+                setClicked(false);
+                setUrl(e.target.value);
+                setIsValid(true);
+              }}
+              value={url}
+              onKeyDown={(e) => e.key === "Enter" && handleManualDeploy()}
+            />
+            {clicked && !isValid && (
+              <p className="mt-2 text-sm text-error">Enter a valid GitHub repo URL</p>
+            )}
           </div>
-        )}
+          <Button
+            onClick={handleManualDeploy}
+            variant="secondary"
+            className="shrink-0"
+          >
+            Deploy from URL
+          </Button>
+        </div>
       </div>
 
       <GitHubRepoPicker open={pickerOpen} onClose={() => setPickerOpen(false)} />

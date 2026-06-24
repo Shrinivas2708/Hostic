@@ -10,7 +10,7 @@ import {
   triggerDeploymentBuild,
 } from "../utils/triggerBuild";
 import { removeDeploymentCache } from "../utils/deploymentCache";
-import { deleteDepsCache } from "../utils/depsCache";
+import { deleteDepsCache, invalidateLocalDepsInstallCache } from "../utils/depsCache";
 import { Builds } from "../model/Builds.model";
 import {
   setupGitHubWebhookForDeployment,
@@ -233,6 +233,107 @@ export const updateAutoDeploy = async (
       message: "Auto-deploy updated",
       auto_deploy: deployment.autoDeploy,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateDeployment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const user_id = req.id;
+    const {
+      deployment_id,
+      branch,
+      buildDir,
+      project_type,
+      installCommands,
+      buildCommands,
+      auto_deploy,
+    } = req.body as {
+      deployment_id: string;
+      branch?: string;
+      buildDir?: string;
+      project_type?: ProjectType;
+      installCommands?: string;
+      buildCommands?: string;
+      auto_deploy?: boolean;
+    };
+
+    if (!deployment_id) {
+      return res.status(400).json({ message: "deployment_id is required" });
+    }
+
+    const existing = await Deployments.findOne({
+      _id: deployment_id,
+      user_id,
+    });
+
+    if (!existing) {
+      return res.status(404).json({ message: "Deployment not found" });
+    }
+
+    const updates: Record<string, string | boolean> = {};
+    let invalidateDeps = false;
+
+    if (branch !== undefined) {
+      updates.branch = branch.trim() || "main";
+    }
+    if (buildDir !== undefined) {
+      const nextDir = buildDir.trim() || "./";
+      const prevDir = existing.buildDir?.trim() || "./";
+      if (nextDir !== prevDir) invalidateDeps = true;
+      updates.buildDir = nextDir;
+    }
+    if (project_type !== undefined) {
+      if (!Object.values(ProjectType).includes(project_type)) {
+        return res.status(400).json({ message: "Invalid project type" });
+      }
+      updates.projectType = project_type;
+    }
+    if (installCommands !== undefined) {
+      if (installCommands.trim() !== (existing.installCommands ?? "").trim()) {
+        invalidateDeps = true;
+      }
+      updates.installCommands = installCommands;
+    }
+    if (buildCommands !== undefined) {
+      updates.buildCommands = buildCommands;
+    }
+    if (auto_deploy !== undefined) {
+      updates.autoDeploy = auto_deploy;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: "No settings to update" });
+    }
+
+    const deployment = await Deployments.findOneAndUpdate(
+      { _id: deployment_id, user_id },
+      { $set: updates },
+      { new: true }
+    );
+
+    if (!deployment) {
+      return res.status(404).json({ message: "Deployment not found" });
+    }
+
+    if (invalidateDeps) {
+      await invalidateLocalDepsInstallCache(deployment_id);
+    }
+
+    if (
+      auto_deploy !== undefined &&
+      deployment.githubWebhookManaged &&
+      user_id
+    ) {
+      await setGitHubWebhookActive(deployment, user_id, auto_deploy);
+    }
+
+    res.status(200).json({ deployment });
   } catch (error) {
     next(error);
   }

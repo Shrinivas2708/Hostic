@@ -66,6 +66,15 @@ type Redeployed = {
       build_name: string,
       status: BuildStatus.Queued,
 }
+export type DeploymentSettings = {
+  branch?: string;
+  buildDir?: string;
+  project_type?: string;
+  installCommands?: string;
+  buildCommands?: string;
+  auto_deploy?: boolean;
+};
+
 type DeployStore = {
   deployments: Deployments[];
   builds: Build[];
@@ -81,6 +90,10 @@ type DeployStore = {
   createDeployment: (data: Data) => Promise<Deployed>;
   redeploy: (slug: string) => Promise<Redeployed>;
   deleteDeployment: (slug: string) => Promise<void>;
+  updateDeployment: (
+    deployment_id: string,
+    settings: DeploymentSettings
+  ) => Promise<Deployment>;
   fetchDeployment: (deployment_id: string) => Promise<void>;
   fetchBuild : (slug:string) => Promise<void>;
   getImg:(deployment_id:string) => Promise<void>;
@@ -145,5 +158,15 @@ fetchDeployment: async (deployment_id: string) => {
   }));
   await useAuthStore.getState().fetchUser();
 },
+
+  updateDeployment: async (deployment_id, settings) => {
+    const res = await axios.patch("/host/deployment", {
+      deployment_id,
+      ...settings,
+    });
+    const updated = res.data.deployment as Deployment;
+    set({ deployment: updated });
+    return updated;
+  },
 
 }));

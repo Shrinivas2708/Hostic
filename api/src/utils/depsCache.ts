@@ -446,6 +446,20 @@ export async function saveDepsCache(
   }
 }
 
+export async function invalidateLocalDepsInstallCache(
+  deploymentId: string
+): Promise<void> {
+  const metaPath = path.join(
+    getDeploymentCacheDir(deploymentId),
+    LOCAL_META_FILE
+  );
+  await fs.promises.unlink(metaPath).catch(() => undefined);
+  const nmDir = localNodeModulesDir(deploymentId);
+  if (fs.existsSync(nmDir)) {
+    await safeRemoveDir(nmDir);
+  }
+}
+
 export async function deleteDepsCache(slug: string): Promise<void> {
   const bucket = getR2Bucket();
   const prefix = `${DEPS_PREFIX}/${slug}/`;
