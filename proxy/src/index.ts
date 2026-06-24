@@ -8,14 +8,18 @@ import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Deployments, IDeployment } from "./model/Deployments.model";
 import { Builds, BuildStatus } from "./model/Builds.model";
+import { extractSlugFromHost, getAppsDomain } from "./config";
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-const BASE_PATH = "https://2b086fbe3c7ee18f666646ea5178c5e2.r2.cloudflarestorage.com";
-const MONGODB_URI =process.env.DATABASE_URL;
-const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID;
-const R2_SECRET_KEY = process.env.R2_SECRET_ACCESS_KEY;
-const R2_BUCKET = process.env.R2_BUCKET ;
+const R2_ENDPOINT =
+  process.env.R2_ENDPOINT ||
+  "https://2b086fbe3c7ee18f666646ea5178c5e2.r2.cloudflarestorage.com";
+const MONGODB_URI = process.env.DATABASE_URL;
+const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY;
+const R2_SECRET_KEY =
+  process.env.R2_SECRET_ACCESS_KEY || process.env.R2_SECRET_KEY;
+const R2_BUCKET = process.env.R2_BUCKET;
 const PUBLIC_PATH = path.resolve(__dirname, "..", "public");
 
 if (!R2_ACCESS_KEY || !R2_SECRET_KEY) {
@@ -28,7 +32,7 @@ if(!MONGODB_URI){
 }
 const s3Client = new S3Client({
   region: "auto",
-  endpoint: BASE_PATH,
+  endpoint: R2_ENDPOINT,
   credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
 });
 
@@ -47,11 +51,6 @@ function getOriginalHostname(req: Request): string {
   );
 }
 
-function extractSlug(hostname: string): string | null {
-  const suffix = ".apps.shribuilds.in";
-  return hostname.endsWith(suffix) ? hostname.slice(0, -suffix.length) : null;
-}
-
 function resolveRequestedFile(reqPath: string): string {
   if (reqPath === "/") return "/index.html";
   if (!reqPath.includes(".")) return "/index.html"; // SPA fallback
@@ -61,9 +60,8 @@ function resolveRequestedFile(reqPath: string): string {
 app.use(async (req: Request, res: Response) => {
   try {
     const hostname = getOriginalHostname(req);
-    // const slug = extractSlug(hostname);
-    const slug = hostname.split(".")[0]
-    console.log(`Incoming host=${hostname} slug=${slug}`);
+    const slug = extractSlugFromHost(hostname);
+    console.log(`Incoming host=${hostname} slug=${slug} appsDomain=${getAppsDomain()}`);
 
     if (!slug) {
       res.status(404).sendFile(path.join(PUBLIC_PATH, "404.html"));
@@ -155,5 +153,7 @@ app.use(async (req: Request, res: Response) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Proxy server running on port ${PORT}`);
+  console.log(
+    `Proxy server on port ${PORT} (apps domain: ${getAppsDomain()})`
+  );
 });

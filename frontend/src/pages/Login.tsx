@@ -3,7 +3,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { addToast } from "@heroui/toast";
+import { addToast } from "../store/toastStore";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { PageContainer } from "../components/layout/PageContainer";

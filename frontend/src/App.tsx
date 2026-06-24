@@ -9,7 +9,7 @@ import CliAuth from "./pages/CliAuth";
 import Dashboard from "./pages/Dashboard";
 import { useAuthStore } from "./store/authStore";
 import { useEffect, useRef } from "react";
-import { ToastProvider } from "@heroui/toast";
+import { ToastHost } from "./components/ToastHost";
 import DeploymentsPage from "./pages/DeploymentsPage";
 import DeploymentDetailsPage from "./pages/DeploymentsUpdatePage";
 import BuildPage from "./pages/BuildPage";
@@ -92,7 +92,7 @@ function App() {
         <Footer />
       </BrowserRouter>
 
-      <ToastProvider placement="top-center" />
+      <ToastHost />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { Label } from "../components/ui/label";
 import { Input } from "../components/ui/input";
 import { useNavigate } from "react-router-dom";
-import { addToast } from "@heroui/toast";
+import { addToast } from "../store/toastStore";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { Button } from "../components/ui/button";

@@ -14,10 +14,10 @@ Hostic is a minimal, production-ready platform to deploy static and SPA frontend
 
 ## Architecture
 
-- `api/` — REST API (Express + MongoDB). Owns users, deployments, builds. Orchestrates builds and publishes logs/status to Redis.
-- `socket/` — WebSocket server (Socket.IO). Subscribes to Redis channels and pushes realtime logs/status to clients.
+- `api/` — REST API (Express + MongoDB) **and** Socket.IO for live build logs. Orchestrates builds and publishes logs/status to Redis.
 - `proxy/` — Public edge proxy (Express). Serves each deployment at `https://{slug}.apps.shribuilds.in` by streaming artifacts from R2.
 - `frontend/` — React app for authentication, deployment creation, logs, and status.
+- `socket/` — **deprecated** (merged into `api/`). Do not run separately.
 
 ### High-level Flow
 
@@ -55,9 +55,10 @@ Hostic is a minimal, production-ready platform to deploy static and SPA frontend
 - Resolves `slug` from `Host` header `*.apps.shribuilds.in`.
 - Looks up current successful build; if building, serves `public/building.html`; else streams files from R2 using signed URLs, with SPA fallback.
 
-### Realtime (`socket/`)
+### Realtime (Socket.IO on API port)
 
-- Subscribes to `logs:{buildId}` and `status:{buildId}`; forwards to connected clients via Socket.IO.
+- Socket.IO attaches to the same HTTP server as Express (`api/src/utils/socketServer.ts`).
+- Subscribes to Redis `logs:{buildId}` and `status:{buildId}`; forwards to browsers.
 
 ---
 
@@ -130,13 +131,7 @@ R2_SECRET_KEY=<r2-secret>
 R2_BUCKET=<bucket-name>
 ```
 
-Socket (`socket/.env`):
-
-```
-REDIS_URL=redis://localhost:6379
-```
-
-Frontend (`frontend/.env` or edit `src/lib/axios.ts`):
+Frontend (`frontend/.env`):
 
 ```
 VITE_API_URL=http://localhost:5000/api
@@ -147,7 +142,6 @@ VITE_API_URL=http://localhost:5000/api
 ```
 cd api && npm i && npm run build
 cd ../proxy && npm i && npm run build
-cd ../socket && npm i && npm run build
 cd ../frontend && pnpm i || npm i && npm run build
 ```
 
@@ -158,7 +152,6 @@ In separate terminals:
 ```
 cd api && npm run start
 cd proxy && npm run start
-cd socket && npm run start
 cd frontend && npm run dev
 ```
 

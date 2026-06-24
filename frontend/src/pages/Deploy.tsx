@@ -2,7 +2,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDeploy } from "../hooks/useDeploy";
 import { useGitHubStore } from "../store/githubStore";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { addToast } from "@heroui/toast";
+import { addToast } from "../store/toastStore";
 import { Label } from "../components/ui/label";
 import { Input } from "../components/ui/input";
 import { Select } from "../components/ui/select";

@@ -1,4 +1,5 @@
 require("dotenv").config();
+import http from "http";
 import connectToDB from "./config/db";
 import express from "express";
 import cors from "cors";
@@ -8,6 +9,7 @@ import hostRouter from "./router/host.routes";
 import userRouter from "./router/user.routes";
 import githubRouter from "./router/github.routes";
 import { handleGitHubWebhook } from "./controller/webhook.controller";
+import { attachBuildSocketServer } from "./utils/socketServer";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -35,7 +37,12 @@ app.use("/api/github", githubRouter);
 
 app.use(errorHandler);
 
+const server = http.createServer(app);
+attachBuildSocketServer(server);
+
 (async () => {
   await connectToDB();
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  server.listen(PORT, () => {
+    console.log(`API + realtime server running on port ${PORT}`);
+  });
 })();

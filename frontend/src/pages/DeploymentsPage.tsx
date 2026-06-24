@@ -10,7 +10,7 @@ import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { PageContainer, PageHeader } from "../components/layout/PageContainer";
-import { addToast } from "@heroui/toast";
+import { addToast } from "../store/toastStore";
 import clsx from "clsx";
 import { Github, Plus } from "lucide-react";
 

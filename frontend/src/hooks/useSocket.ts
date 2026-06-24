@@ -6,8 +6,10 @@ export const useSocket = (buildId: string) => {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    socketRef.current = io(config.socketUrl);
-    socketRef.current.emit('joinBuildLogs', buildId);
+    socketRef.current = io(config.socketUrl, {
+      query: { buildId },
+      transports: ["websocket"],
+    });
 
     return () => {
       socketRef.current?.disconnect();

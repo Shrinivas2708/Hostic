@@ -16,7 +16,7 @@ import {
   normalizeBuildDirForMatch,
   normalizeRepoUrl,
 } from "../lib/project";
-import { waitForBuild } from "../lib/poll";
+import { watchDeploymentBuild } from "../lib/buildWatch";
 import { dieIfApiError, fail, info, ok, warn } from "../lib/ui";
 import type { DeploymentDetail } from "../lib/api";
 
@@ -88,7 +88,7 @@ export async function deployCommand(opts: {
         return;
       }
 
-      await watchBuild(config, result.build_name, result.slug);
+      await watchDeploymentBuild(config, result.build_name, result.slug);
       return;
     }
 
@@ -113,7 +113,7 @@ export async function deployCommand(opts: {
       return;
     }
 
-    await watchBuild(config, result.build_name, result.slug);
+    await watchDeploymentBuild(config, result.build_name, result.slug);
   } catch (err) {
     dieIfApiError(err);
   }
@@ -139,7 +139,7 @@ export async function redeployCommand(opts: {
       return;
     }
 
-    await watchBuild(config, result.build_name, result.slug);
+    await watchDeploymentBuild(config, result.build_name, result.slug);
   } catch (err) {
     dieIfApiError(err);
   }
@@ -235,29 +235,4 @@ async function findExistingDeployment(
   fail(
     `Multiple deployments match this repo. Pick one:\n${slugs}\n\nUse: hostic redeploy <slug>  or  hostic deploy --slug <slug>`
   );
-}
-
-async function watchBuild(
-  config: ReturnType<typeof resolveConfig>,
-  buildName: string,
-  slug: string
-): Promise<void> {
-  const siteUrl = getDeploymentUrl(slug, config.deployUrlTemplate);
-
-  const build = await waitForBuild(config, buildName, {
-    onStatus: (b) => {
-      if (b.status === "building") info("Building...");
-    },
-    onLogLine: (line) => {
-      if (line.trim()) console.log(`  ${line}`);
-    },
-  });
-
-  if (build.status === "success") {
-    ok(`Published at ${siteUrl.replace(/^https?:\/\//, "")}`);
-    console.log(siteUrl);
-    return;
-  }
-
-  fail(`Build failed (${buildName})`);
 }

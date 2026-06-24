@@ -5,7 +5,7 @@ import axios from "../lib/axios";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { PageContainer } from "../components/layout/PageContainer";
-import { addToast } from "@heroui/toast";
+import { addToast } from "../store/toastStore";
 import { Terminal } from "lucide-react";
 
 export default function CliAuth() {

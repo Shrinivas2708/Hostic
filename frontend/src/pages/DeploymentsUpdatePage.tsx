@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDeploy } from "../hooks/useDeploy";
 import { formatDate } from "../exports";
-import { addToast } from "@heroui/toast";
+import { addToast } from "../store/toastStore";
 import { Spinner } from "@heroui/spinner";
 import { StatusBadge } from "../components/StatusBadge";
 import { Button } from "../components/ui/button";

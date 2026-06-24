@@ -19,16 +19,14 @@ A lightweight frontend hosting platform (mini-Vercel). Users connect a GitHub re
 
 ```
 Hostic/
-├── api/          Express API + in-process build worker
-├── socket/       Socket.IO server (Redis → browser)
+├── api/          Express API + Socket.IO + in-process build worker
 ├── proxy/        Public edge server (subdomain → R2)
 └── frontend/     React dashboard (Vite)
 ```
 
 | Service   | Port (local) | Role |
 |-----------|--------------|------|
-| `api`     | 5000         | Auth, deployments, builds, GitHub OAuth, webhooks, worker |
-| `socket`  | 9001         | Live log/status relay |
+| `api`     | 5000         | REST, WebSocket logs, auth, builds, GitHub, worker |
 | `proxy`   | 8080         | Serve deployed apps to visitors |
 | `frontend`| 5173         | User dashboard |
 
@@ -39,15 +37,14 @@ All services share **MongoDB** for metadata. **Redis** is used only for build pu
 ## System Diagram
 
 ```
-┌─────────────┐     REST + JWT      ┌─────────────┐
-│   Browser   │ ──────────────────► │     API     │
-│  (React)    │     WebSocket       │  + Worker   │
-└──────┬──────┘ ──────────────────► └──────┬──────┘
-       │              Socket.IO              │
-       │                                     ├──► MongoDB
-       │                                     ├──► Redis (pub/sub)
-       │                                     ├──► Docker (builds)
-       │                                     └──► R2 (upload)
+┌─────────────┐   REST + Socket.IO   ┌─────────────┐
+│   Browser   │ ───────────────────► │     API     │
+│  (React)    │   (same port :5000)  │  + Worker   │
+└──────┬──────┘                      └──────┬──────┘
+       │                                    ├──► MongoDB
+       │                                    ├──► Redis (pub/sub)
+       │                                    ├──► Docker (builds)
+       │                                    └──► R2 (upload)
        │
        │  HTTPS  {slug}.apps.shribuilds.in
        ▼
@@ -143,8 +140,9 @@ Queue job
 
 ---
 
-## Realtime (`socket/`)
+## Realtime (Socket.IO on API)
 
+- Socket.IO runs on the **same port as the API** (`api/src/utils/socketServer.ts`)
 - Client connects with `?buildId={build_name}`
 - Subscribes to Redis `logs:{buildId}` and `status:{buildId}`
 - Emits `log` (JSON entries) and `status` events to the React build page
@@ -208,15 +206,10 @@ IMAGEKIT_* (preview screenshots)
 PORT, DATABASE_URL, R2_* 
 ```
 
-### Socket (`socket/.env`)
-```
-REDIS_URL
-```
-
 ### Frontend (`frontend/.env`)
 ```
 VITE_API_URL=http://localhost:5000/api
-VITE_SOCKET_URL=ws://localhost:9001
+# VITE_SOCKET_URL optional — defaults to API origin without /api
 VITE_DEPLOY_URL_TEMPLATE=http://{slug}.localhost:8080
 ```
 
@@ -228,7 +221,6 @@ Run in separate terminals:
 
 ```bash
 cd api && npm run dev
-cd socket && npm run dev
 cd proxy && npm run dev
 cd frontend && npm run dev
 ```
@@ -239,12 +231,31 @@ Requires: **Node 20+**, **Docker**, **MongoDB**, **Redis**, **R2 credentials**.
 
 ## Production URLs
 
-| Resource | URL pattern |
-|----------|-------------|
-| Dashboard | `shribuilds.in` (frontend) |
-| API | `API_PUBLIC_URL` |
-| Deployed apps | `https://{slug}.apps.shribuilds.in` |
-| GitHub OAuth callback | `{API_PUBLIC_URL}/api/github/callback` |
+| Resource | Where it runs | URL pattern |
+|----------|---------------|-------------|
+| Dashboard | Vercel / static host | `https://shribuilds.in` |
+| API + WebSocket | VPS / tunnel | `https://api.shribuilds.in` |
+| **Deployed user apps** | **Proxy (VPS)** | `https://{slug}.apps.shribuilds.in` |
+| GitHub OAuth callback | API | `{API_PUBLIC_URL}/api/github/callback` |
+
+### DNS (production)
+
+```
+shribuilds.in              →  Vercel (dashboard)
+api.shribuilds.in          →  your API server IP / tunnel
+*.apps.shribuilds.in       →  proxy server IP (wildcard — required)
+```
+
+Set the same domain everywhere:
+
+| Service | Env var | Example |
+|---------|---------|---------|
+| Proxy | `APPS_DOMAIN` | `apps.shribuilds.in` |
+| API | `DEPLOY_URL_TEMPLATE` | `https://{slug}.apps.shribuilds.in` |
+| Frontend | `VITE_DEPLOY_URL_TEMPLATE` | `https://{slug}.apps.shribuilds.in` |
+| CLI | `HOSTIC_DEPLOY_URL_TEMPLATE` | `https://{slug}.apps.shribuilds.in` |
+
+Put **Caddy or nginx** in front of the proxy on `:443` with a wildcard TLS cert (Let's Encrypt DNS challenge for `*.apps.shribuilds.in`).
 
 ---
 

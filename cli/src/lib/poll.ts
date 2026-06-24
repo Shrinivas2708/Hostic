@@ -1,5 +1,6 @@
 import { getBuild, type BuildRecord } from "./api";
 import type { HosticConfig } from "./config";
+import type { BuildLogEntry } from "./buildLogs";
 
 const TERMINAL = ["queued", "building", "success", "failed"] as const;
 
@@ -8,21 +9,30 @@ export async function waitForBuild(
   buildName: string,
   options: {
     intervalMs?: number;
-    onStatus?: (build: BuildRecord) => void;
-    onLogLine?: (line: string) => void;
+    onStatusChange?: (status: string, build: BuildRecord) => void;
+    onLogEntry?: (entry: BuildLogEntry) => void;
   } = {}
 ): Promise<BuildRecord> {
   const intervalMs = options.intervalMs ?? 2000;
   let lastLogCount = 0;
+  let lastStatus: string | null = null;
 
   for (;;) {
     const { build } = await getBuild(config, buildName);
-    options.onStatus?.(build);
+
+    if (build.status !== lastStatus) {
+      lastStatus = build.status;
+      options.onStatusChange?.(build.status, build);
+    }
 
     if (build.logs?.length) {
       const newLogs = build.logs.slice(lastLogCount);
       for (const entry of newLogs) {
-        options.onLogLine?.(entry.message);
+        options.onLogEntry?.({
+          level: (entry.level as BuildLogEntry["level"]) || "info",
+          message: entry.message,
+          at: entry.at,
+        });
       }
       lastLogCount = build.logs.length;
     }

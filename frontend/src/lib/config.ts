@@ -4,14 +4,36 @@
  * VITE_DEPLOY_URL_TEMPLATE uses `{slug}` as the deployment subdomain placeholder.
  * Local:  http://{slug}.localhost:8080
  * Prod:   https://{slug}.apps.shribuilds.in
+ *
+ * Socket.IO shares the API origin (no separate socket server).
  */
 
 const deployUrlTemplate =
   import.meta.env.VITE_DEPLOY_URL_TEMPLATE ?? "http://{slug}.localhost:8080";
 
+const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api";
+
+/** Socket.IO client URL — same host as API, without /api path */
+export function deriveSocketUrl(fromApiUrl: string): string {
+  if (import.meta.env.VITE_SOCKET_URL) {
+    return import.meta.env.VITE_SOCKET_URL.replace(/\/$/, "");
+  }
+
+  try {
+    const parsed = new URL(fromApiUrl);
+    parsed.pathname = parsed.pathname.replace(/\/api\/?$/, "");
+    parsed.search = "";
+    parsed.hash = "";
+    const base = parsed.toString().replace(/\/$/, "");
+    return base || "http://localhost:5000";
+  } catch {
+    return "http://localhost:5000";
+  }
+}
+
 export const config = {
-  apiUrl: import.meta.env.VITE_API_URL ?? "http://localhost:5000/api",
-  socketUrl: import.meta.env.VITE_SOCKET_URL ?? "ws://localhost:9001",
+  apiUrl,
+  socketUrl: deriveSocketUrl(apiUrl),
   deployUrlTemplate,
 } as const;
 

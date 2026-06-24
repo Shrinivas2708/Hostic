@@ -1,1 +1,1 @@
-{"root":["./src/cli.ts","./src/index.ts","./src/commands/auth.ts","./src/commands/deploy.ts","./src/lib/api.ts","./src/lib/browserlogin.ts","./src/lib/config.ts","./src/lib/poll.ts","./src/lib/project.ts","./src/lib/ui.ts"],"version":"5.9.3"}
+{"root":["./src/cli.ts","./src/index.ts","./src/commands/auth.ts","./src/commands/deploy.ts","./src/lib/ansi.ts","./src/lib/api.ts","./src/lib/browserlogin.ts","./src/lib/buildlogs.ts","./src/lib/buildwatch.ts","./src/lib/config.ts","./src/lib/poll.ts","./src/lib/project.ts","./src/lib/ui.ts"],"version":"5.9.3"}
