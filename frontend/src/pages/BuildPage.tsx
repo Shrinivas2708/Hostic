@@ -32,6 +32,15 @@ function BuildPage() {
   const logContainerRef = useRef<HTMLDivElement>(null);
   const queuedAtRef = useRef<number>(Date.now());
 
+  // Reset UI when switching to a different build
+  useEffect(() => {
+    if (!buildName) return;
+    setLogs([]);
+    setLiveStatus(null);
+    setElapsedSec(0);
+    queuedAtRef.current = Date.now();
+  }, [buildName]);
+
   useEffect(() => {
     if (buildName && id) {
       setLoadingBuild(true);
@@ -39,18 +48,25 @@ function BuildPage() {
         setLoadingBuild(false)
       );
     }
-  }, [id, buildName]);
+  }, [id, buildName, fetchDeployment, fetchBuild]);
+
+  // Load persisted logs after fetch (completed builds + page refresh mid-build)
+  useEffect(() => {
+    if (loadingBuild || !build || build.build_name !== buildName) return;
+    if (build.logs?.length) {
+      setLogs(build.logs);
+    }
+  }, [loadingBuild, build, buildName]);
 
   useEffect(() => {
-    if (loadingBuild || !buildName || !build) return;
+    if (loadingBuild || !buildName || !build || build.build_name !== buildName) {
+      return;
+    }
 
     if (
       build.status === BuildStatus.Success ||
       build.status === BuildStatus.Failed
     ) {
-      if (build.logs?.length) {
-        setLogs(build.logs);
-      }
       return;
     }
 
@@ -60,7 +76,7 @@ function BuildPage() {
     });
 
     socket.on("connect", () => {
-      if (!liveStatus && build?.status) setLiveStatus(build.status);
+      setLiveStatus((prev) => prev ?? build.status);
     });
 
     socket.on("status", (status: string) => {
@@ -93,16 +109,6 @@ function BuildPage() {
       socket.disconnect();
     };
   }, [buildName, build, loadingBuild, id, navigate, fetchBuild]);
-
-  useEffect(() => {
-    if (!build) return;
-    const terminal =
-      build.status === BuildStatus.Success ||
-      build.status === BuildStatus.Failed;
-    if (terminal && build.logs?.length) {
-      setLogs(build.logs);
-    }
-  }, [build?.status, build?.logs]);
 
   // Auto-scroll logs to bottom as new lines arrive
   useEffect(() => {

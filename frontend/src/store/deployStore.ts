@@ -112,6 +112,7 @@ fetchDeployment: async (deployment_id: string) => {
     set({ builds: res.data.builds });
   },
   fetchBuild: async (build_name : string) => {
+    set({ build: null });
     const res = await axios.get(`/host/build?build_name=${build_name}`)
     set({build : res.data.build})
   },
