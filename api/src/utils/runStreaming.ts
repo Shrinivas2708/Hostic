@@ -1,6 +1,29 @@
 import { spawn } from "child_process";
 import type { BuildLogger } from "./logger";
 
+function isBenignContainerStderr(line: string): boolean {
+  const t = line.trim();
+  return (
+    /^npm warn\b/i.test(t) ||
+    /^npm notice\b/i.test(t) ||
+    /^Generated an empty chunk:/i.test(t)
+  );
+}
+
+function handleContainerLine(
+  line: string,
+  stream: "stdout" | "stderr",
+  logger: BuildLogger
+) {
+  if (!line.trim()) return;
+  if (stream === "stderr" && isBenignContainerStderr(line)) {
+    logger.log(line);
+    return;
+  }
+  if (stream === "stdout") logger.stdout(line);
+  else logger.stderr(line);
+}
+
 export function runStreamingDocker(
   argv: string[],
   logger: BuildLogger
@@ -15,13 +38,13 @@ export function runStreamingDocker(
 
     child.stdout.on("data", (chunk: string) => {
       chunk.split(/\r?\n/).forEach((line) => {
-        if (line.trim().length) logger.stdout(line);
+        handleContainerLine(line, "stdout", logger);
       });
     });
 
     child.stderr.on("data", (chunk: string) => {
       chunk.split(/\r?\n/).forEach((line) => {
-        if (line.trim().length) logger.stderr(line);
+        handleContainerLine(line, "stderr", logger);
       });
     });
 

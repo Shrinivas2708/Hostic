@@ -7,6 +7,16 @@ export type DockerVolume = {
   readOnly?: boolean;
 };
 
+/** Optional caps so local Docker builds do not hog the whole machine (see api/.env). */
+function dockerResourceArgs(): string[] {
+  const args: string[] = [];
+  const cpus = process.env.BUILD_DOCKER_CPUS?.trim();
+  const memory = process.env.BUILD_DOCKER_MEMORY?.trim();
+  if (cpus) args.push("--cpus", cpus);
+  if (memory) args.push("--memory", memory);
+  return args;
+}
+
 export function dockerCmd(
   hostPath: string,
   shellCommand: string,
@@ -15,7 +25,7 @@ export function dockerCmd(
 ): string[] {
   const volPath = hostPath.replace(/\\/g, "/");
 
-  const args = ["run", "--rm", "-v", `${volPath}:/app`, "-w", "/app"];
+  const args = ["run", "--rm", ...dockerResourceArgs(), "-v", `${volPath}:/app`, "-w", "/app"];
 
   for (const vol of extraVolumes ?? []) {
     const host = vol.host.replace(/\\/g, "/");

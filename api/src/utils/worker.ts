@@ -15,10 +15,13 @@ import { safeRemoveDir } from "./dockerFs";
 import {
   buildInstallCommand,
   ensureNpmCacheDir,
+  ensureNodeModulesDir,
   getNpmCacheContainerPath,
+  getNodeModulesContainerPath,
   restoreDepsCache,
   saveDepsCache,
 } from "./depsCache";
+import type { DockerVolume } from "./dockercmd";
 import {
   copyRepoToWorkDir,
   getDeploymentCacheDir,
@@ -72,50 +75,61 @@ export async function processJob(job: BuildJob) {
       path.relative(workDir, projectRoot).replace(/\\/g, "/") || ".";
 
     const lockfileInfo = getLockfileInfo(projectRoot);
-    let preferOffline = false;
-    let npmCacheHostPath: string | null = null;
+    let depsRestore = { preferOffline: false, skipInstall: false };
+    const extraVolumes: DockerVolume[] = [];
 
     if (lockfileInfo) {
-      npmCacheHostPath = await ensureNpmCacheDir(deploymentId);
-      preferOffline = await restoreDepsCache(
+      const npmCacheHostPath = await ensureNpmCacheDir(deploymentId);
+      const nodeModulesHostPath = await ensureNodeModulesDir(deploymentId);
+
+      extraVolumes.push(
+        { host: npmCacheHostPath, container: getNpmCacheContainerPath() },
+        { host: nodeModulesHostPath, container: getNodeModulesContainerPath() }
+      );
+
+      depsRestore = await restoreDepsCache(
         deploymentId,
         slug,
         lockfileInfo,
         projectRootRel,
         logger
       );
-      if (!preferOffline) {
-        logger.log("No warm npm cache — cold install");
+
+      if (!depsRestore.preferOffline && !depsRestore.skipInstall) {
+        logger.log("No warm dependency cache — cold install");
       }
     }
 
     const installCmd = buildInstallCommand(
       installCommands ?? "npm install",
-      preferOffline
+      depsRestore.preferOffline
     );
     const buildCmd = `
 echo "[BUILD] Starting build process..." && \
 ${buildCommands}
 `.trim();
-    const combinedCmd = `${installCmd} && ${buildCmd}`;
+    const combinedCmd = depsRestore.skipInstall
+      ? buildCmd
+      : `${installCmd} && ${buildCmd}`;
 
-    const extraVolumes = npmCacheHostPath
-      ? [
-          {
-            host: npmCacheHostPath,
-            container: getNpmCacheContainerPath(),
-          },
-        ]
-      : undefined;
+    if (depsRestore.skipInstall) {
+      logger.log("Running build (install skipped)...");
+    } else {
+      logger.log(
+        depsRestore.preferOffline
+          ? "Installing dependencies (warm npm cache)..."
+          : "Installing dependencies..."
+      );
+      logger.log("Running build...");
+    }
 
-    logger.log(
-      preferOffline
-        ? "Installing dependencies (warm npm cache)..."
-        : "Installing dependencies..."
-    );
-    logger.log("Running build...");
     await runStreamingDocker(
-      dockerCmd(projectRoot, combinedCmd, `build-${buildId}`, extraVolumes),
+      dockerCmd(
+        projectRoot,
+        combinedCmd,
+        `build-${buildId}`,
+        extraVolumes.length ? extraVolumes : undefined
+      ),
       logger
     );
 
