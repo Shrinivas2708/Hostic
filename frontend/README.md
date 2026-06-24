@@ -1,69 +1,50 @@
-# React + TypeScript + Vite
+# Hostic Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React dashboard for the Hostic deployment platform.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- React 19 + Vite 7 + TypeScript
+- Tailwind CSS v4
+- Zustand (auth, deploy, GitHub, toast state)
+- React Router
+- Socket.IO client (connects to API port, not a separate socket service)
+- HeroUI components
 
-## Expanding the ESLint configuration
+## Pages
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| Route | Purpose |
+|-------|---------|
+| `/` | Landing / marketing |
+| `/login`, `/signup` | JWT auth |
+| `/deploy` | GitHub repo picker, autodetected install/build commands |
+| `/deployments` | Deployment list with preview thumbnails |
+| `/deployments/:id/:buildName` | Live build logs (Socket.IO) |
+| `/deployed/:id/:buildName` | Success view with live URL |
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Config (`frontend/.env`)
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+VITE_API_URL=http://localhost:5000/api
+VITE_DEPLOY_URL_TEMPLATE=http://{slug}.localhost:8080
+# VITE_SOCKET_URL optional — defaults to API origin without /api
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+See `src/lib/config.ts` for URL helpers (`getDeploymentUrl`, socket URL derivation).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Development
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev   # http://localhost:5173
 ```
+
+Requires the API running on port 5000.
+
+## Key files
+
+- `src/store/authStore.ts` — JWT token and user
+- `src/store/deployStore.ts` — deployment API calls
+- `src/store/githubStore.ts` — GitHub OAuth and repo listing
+- `src/pages/Deploy.tsx` — deploy form with package.json autodetection
+- `src/pages/BuildPage.tsx` — live logs via Socket.IO

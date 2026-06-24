@@ -21,7 +21,8 @@ A lightweight frontend hosting platform (mini-Vercel). Users connect a GitHub re
 Hostic/
 ├── api/          Express API + Socket.IO + in-process build worker
 ├── proxy/        Public edge server (subdomain → R2)
-└── frontend/     React dashboard (Vite)
+├── frontend/     React dashboard (Vite)
+└── cli/          Terminal deploy tool (`hostic` binary)
 ```
 
 | Service   | Port (local) | Role |
@@ -169,12 +170,25 @@ Queue job
 
 ## Frontend (`frontend/`)
 
-- **Stack:** React 19, Vite 7, Tailwind CSS v4, Zustand, React Router, HeroUI (toast/spinner)
-- **Stores:** `authStore`, `deployStore`, `githubStore`
+- **Stack:** React 19, Vite 7, Tailwind CSS v4, Zustand, React Router, HeroUI
+- **Stores:** `authStore`, `deployStore`, `githubStore`, `toastStore`
 - **Config:** `src/lib/config.ts` — `VITE_API_URL`, `VITE_SOCKET_URL`, `VITE_DEPLOY_URL_TEMPLATE`
-- **Pages:** Landing, Login/Signup, Deployments, Deploy, Build (live logs), Deployed preview
+- **Pages:** Landing, Login/Signup, Deployments, Deploy (GitHub picker + autodetect), Build (live logs), Deployed preview
+- **GitHub:** OAuth connect, repo list, `package.json` autodetection on deploy form
 
 Protected routes wrap dashboard pages with JWT check (`ProtectedRoute`).
+
+---
+
+## CLI (`cli/`)
+
+- **Package:** `hostic-cli` — binary `hostic`
+- **Commands:** `login`, `logout`, `whoami`, `deploy`, `redeploy`, `list`
+- **Config:** `~/.hostic/config.json` or `HOSTIC_TOKEN` / `HOSTIC_API_URL` env vars
+- **Behavior:** Detects git remote + branch; redeploys when slug or repo+dir already exists; streams build logs in terminal
+- Same REST API as the dashboard — triggers remote Docker builds, does not upload local `dist/`
+
+See `cli/README.md` for install and usage.
 
 ---
 
@@ -185,7 +199,7 @@ Protected routes wrap dashboard pages with JWT check (`ProtectedRoute`).
 | `/api/auth` | signup, login, delete, update |
 | `/api/user` | `GET /me` |
 | `/api/host` | deploy, redeploy, list/get/delete deployment, builds, webhook info |
-| `/api/github` | OAuth connect, list repos, repo details |
+| `/api/github` | OAuth connect, list repos, repo details, package.json detect |
 | `/api/webhooks/github/:secret` | GitHub push webhook (raw body, HMAC) |
 
 ---
@@ -203,7 +217,7 @@ IMAGEKIT_* (preview screenshots)
 
 ### Proxy (`proxy/.env`)
 ```
-PORT, DATABASE_URL, R2_* 
+PORT, DATABASE_URL, APPS_DOMAIN, R2_* 
 ```
 
 ### Frontend (`frontend/.env`)
@@ -255,5 +269,8 @@ Set `APPS_DOMAIN`, `DEPLOY_URL_TEMPLATE`, and `VITE_DEPLOY_URL_TEMPLATE` to matc
 ## Related Docs
 
 - `README.md` — setup and quick start
-- `Platform.md` — older platform deep dive (partially outdated)
+- `cli/README.md` — CLI install and commands
+- `INTERVIEW_PITCH.md` — interview elevator pitch and demo script
+- `INTERVIEW_TECH.md` — deep technical reference for interviews
+- `Platform.md` — build lifecycle and operational notes
 - `DESIGN.md` — UI/design tokens

@@ -1,64 +1,80 @@
 ## Hostic — Lightweight Frontend Hosting Platform
 
-Hostic is a minimal, production-ready platform to deploy static and SPA frontend apps straight from a Git repo. It clones your repo, installs and builds inside an isolated Docker container, uploads the build artifacts to Cloudflare R2, serves them via a smart proxy on custom subdomains, and streams build logs/status live over WebSockets.
+Hostic is a minimal, production-ready platform to deploy static and SPA frontend apps from GitHub. It clones your repo, installs and builds inside an isolated Docker container, uploads build artifacts to Cloudflare R2, serves them via a smart proxy on custom subdomains, and streams build logs live over WebSockets.
+
+Deploy from the **dashboard** or the **`hostic` CLI** — same pipeline either way.
 
 ### Why Hostic
 
-- **Simple**: Bring a repo URL and two commands (install, build).
+- **Simple**: Connect GitHub, pick a repo, deploy — install/build commands autodetected from `package.json`.
+- **CLI-first option**: `hostic login` → `hostic deploy --slug my-app` from any cloned repo.
 - **Isolated builds**: Each build runs in a fresh Node 20 Docker container.
-- **Fast static hosting**: Artifacts streamed directly from R2 via signed URLs.
-- **Live feedback**: Realtime logs and statuses via Redis + Socket.IO.
-- **Multi-deploy**: Per-user deployments with unique slugs and rebuilds.
+- **Fast rebuilds**: Per-deployment git cache and R2-backed npm dependency cache.
+- **Fast static hosting**: Artifacts streamed from R2 via signed URLs.
+- **Live feedback**: Realtime logs and statuses via Redis + Socket.IO on the API.
+- **Push-to-deploy**: GitHub webhooks auto-redeploy when the API is publicly reachable.
+- **Multi-deploy**: Per-user deployments with unique slugs and redeploys.
 
 ---
 
 ## Architecture
 
-- `api/` — REST API (Express + MongoDB) **and** Socket.IO for live build logs. Orchestrates builds and publishes logs/status to Redis.
-- `proxy/` — Public edge proxy (Express). Serves each deployment at `https://{slug}.apps.shribuilds.in` by streaming artifacts from R2.
-- `frontend/` — React app for authentication, deployment creation, logs, and status.
-- `socket/` — **deprecated** (merged into `api/`). Do not run separately.
+| Package | Role |
+|---------|------|
+| `api/` | REST API (Express + MongoDB) **and** Socket.IO for live build logs. Build worker, GitHub OAuth/webhooks. |
+| `proxy/` | Public edge proxy. Serves each deployment at `{slug}.localhost:8080` (local) or `https://{slug}.apps.yourdomain.com` (prod). |
+| `frontend/` | React dashboard — auth, GitHub repo picker, deploy, live logs, deployment list. |
+| `cli/` | Terminal tool (`hostic`) — login, deploy, redeploy, list. |
 
 ### High-level Flow
 
-1. User authenticates and calls `POST /api/host` with `repo_url`, `project_type`, `installCommands`, `buildCommands`, optional `buildDir`.
-2. API creates a `Deployment` (+ initial `Build`) and enqueues a build job.
-3. Worker clones the repo, detects project root, runs install+build in Docker, detects build output directory, uploads artifacts to R2, and updates DB.
-4. Proxy serves the latest successful build for `slug` via signed R2 URLs; if building, shows a "building" page.
-5. Socket server streams logs and status updates to the UI in realtime.
+1. User authenticates (dashboard or CLI) and deploys with repo URL, commands, optional `slug` and `buildDir`.
+2. API creates a `Deployment` + queued `Build`, enqueues a build job, optionally registers a GitHub webhook.
+3. Worker syncs git cache, runs install+build in Docker, uploads artifacts to R2, updates MongoDB.
+4. Proxy serves the latest successful build for `slug` via signed R2 URLs; shows a building page while in progress.
+5. Socket.IO on the API streams logs and status to the dashboard; CLI polls and prints logs in the terminal.
 
 ---
+
 ## System Architecture
+
 <img width="1492" height="720" alt="image" src="https://github.com/user-attachments/assets/1fc2f80c-82a0-4dc4-801d-2c6d2f270a34" />
 
+---
 
-## Key Components (Under the Hood)
+## Key Components
 
 ### Build Orchestration (`api/src/utils/*`)
 
-- `buildQueue.ts`: Simple in-memory FIFO with single concurrency, feeds `processJob`.
-- `worker.ts`: Core pipeline — clone repo (simple-git), resolve project root, run `installCommands && buildCommands` inside Docker (`node:20`), detect output (`dist|build|public`), upload to R2, update Mongo, publish logs/status via Redis.
-- `dockercmd.ts` + `runStreaming.ts`: Compose and run Docker container with live stdout/stderr streaming to the logger.
-- `detectArtifactPath.ts` + `findProjectRoot.ts`: Best-effort discovery of project root and output directory.
-- `upload.ts`: Recursive uploader to Cloudflare R2 via AWS SDK v3.
-- `logger.ts` + `pub.ts`: Structured timestamps; publish logs to `logs:{buildId}` and status to `status:{buildId}` channels (Redis).
-- `imagesHandle.ts`: Uses Puppeteer + ImageKit to capture and store preview thumbnails for deployments.
+- `buildQueue.ts` — in-memory FIFO, single concurrency by default
+- `worker.ts` — git cache, Docker install/build, artifact upload
+- `deploymentCache.ts` — per-deployment git fetch cache, `buildDir` resolution
+- `depsCache.ts` — R2-backed npm cache keyed by lockfile hash
+- `dockercmd.ts` + `runStreaming.ts` — Docker with live stdout/stderr streaming
+- `detectArtifactPath.ts` + `findProjectRoot.ts` — output and monorepo detection
+- `projectDefaults.ts` — autodetect install/build/type from `package.json`
+- `githubWebhooks.ts` — register webhooks for push-to-deploy
+- `upload.ts` — recursive R2 upload
+- `logger.ts` + `socketServer.ts` — logs/status via Redis → Socket.IO
+- `imagesHandle.ts` — Puppeteer + ImageKit preview screenshots
 
-### Data Model (`api/src/model/*`)
+### CLI (`cli/`)
 
-- `User`: `username`, `email`, `password` (plain in this repo; replace with hashing in prod), `deployments_count` with quota controls.
-- `Deployments`: `slug`, `repo_url`, `projectType`, `installCommands`, `buildCommands`, `current_build_id`, optional preview image fields, and `buildNo` for redeploy limits.
-- `Builds`: per build `status` (queued/building/success/failed), `build_name` (short id), artifact path, timings.
+```bash
+cd cli && npm install && npm run build && npm link
+
+hostic login
+hostic deploy --slug my-app
+hostic redeploy my-app
+hostic list
+```
+
+See `cli/README.md` for all options. Publish to npm as `hostic-cli`.
 
 ### Serving Layer (`proxy/`)
 
-- Resolves `slug` from `Host` header `*.apps.shribuilds.in`.
-- Looks up current successful build; if building, serves `public/building.html`; else streams files from R2 using signed URLs, with SPA fallback.
-
-### Realtime (Socket.IO on API port)
-
-- Socket.IO attaches to the same HTTP server as Express (`api/src/utils/socketServer.ts`).
-- Subscribes to Redis `logs:{buildId}` and `status:{buildId}`; forwards to browsers.
+- `APPS_DOMAIN` config — local: `localhost` → `{slug}.localhost:8080`
+- SPA fallback, building page, presigned R2 streaming
 
 ---
 
@@ -66,115 +82,125 @@ Hostic is a minimal, production-ready platform to deploy static and SPA frontend
 
 Base: `/api`
 
-- `POST /auth/signup` — create user ⇒ `{ token }`
-- `POST /auth/login` — login ⇒ `{ token }`
-- `DELETE /auth/delete` — delete account (auth)
-- `PATCH /auth/update` — update user fields (auth)
+**Auth:** `POST /auth/signup`, `POST /auth/login`, `DELETE /auth/delete`, `PATCH /auth/update`
 
-- `GET /user/me` — current user (auth)
+**User:** `GET /user/me`
 
-- `POST /host` — create deployment (auth)
-  - body: `{ repo_url, project_type: "react"|"vite"|"static", installCommands, buildCommands, buildDir? }`
-  - returns: `{ deployment_id, build_id, build_name, slug, status }`
-- `POST /host/redeploy` — enqueue new build for an existing deployment (auth)
-- `GET /host` — list deployments (auth)
-- `GET /host/deployment?deployment_id=...` — get deployment (auth)
-- `DELETE /host/delete` — delete deployment (auth)
-- `GET /host/builds?deployment_id=...` — list builds (auth)
-- `GET /host/build?build_name=...` — get build by name (auth)
-- `POST /host/getimg` — generate or return preview image for latest build (auth)
-- `GET /host/webhook?deployment_id=...` — webhook URL + secret for GitHub auto-deploy (auth)
-- `PATCH /host/auto-deploy` — enable/disable auto-deploy `{ deployment_id, auto_deploy }` (auth)
-- `POST /host/webhook/regenerate` — rotate webhook secret (auth)
+**Deploy:**
+- `POST /host` — create deployment (optional `slug`, `buildDir`, `branch`)
+- `POST /host/redeploy` — new build for existing deployment
+- `GET /host`, `GET /host/deployment`, `DELETE /host/delete`
+- `GET /host/builds`, `GET /host/build`
+- `POST /host/getimg` — preview screenshot
+- `GET /host/webhook`, `PATCH /host/auto-deploy`, `POST /host/webhook/regenerate`
 
-- `POST /api/webhooks/github/:webhookSecret` — GitHub push webhook (no JWT; HMAC verified)
+**GitHub:**
+- `GET /github/connect`, `GET /github/callback`, `GET /github/status`
+- `GET /github/repos`, `GET /github/repos/:owner/:repo`
+- `GET /github/repos/:owner/:repo/detect` — autodetect install/build/type
+
+**Webhooks:** `POST /webhooks/github/:webhookSecret` — GitHub push (HMAC verified)
 
 ---
 
 ## Local Development
 
-Requirements:
+**Requirements:** Node 20+, Docker, MongoDB, Redis, R2 credentials
 
-- Node 20+
-- Docker (to run isolated builds)
-- MongoDB
-- Redis
+### Environment
 
-### 1) Environment
-
-Create `.env` files in each service as needed. Required keys:
-
-API (`api/.env`):
+**API** (`api/.env`):
 
 ```
 PORT=5000
 DATABASE_URL=mongodb://localhost:27017/hostic
 JWT_SECRET=replace-me
 REDIS_URL=redis://localhost:6379
-R2_ENDPOINT=https://<your-account-id>.r2.cloudflarestorage.com
+R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 R2_BUCKET=<bucket-name>
-R2_ACCESS_KEY_ID=<r2-access-key>
-R2_SECRET_ACCESS_KEY=<r2-secret>
-IMAGEKIT_PUBLIC_KEY=...
-IMAGEKIT_PRIVATE_KEY=...
-IMAGEKIT_URL_ENDPOINT=...
-API_PUBLIC_URL=https://api.shribuilds.in
+R2_ACCESS_KEY_ID=<key>
+R2_SECRET_ACCESS_KEY=<secret>
+API_PUBLIC_URL=http://localhost:5000
+GITHUB_CALLBACK_URL=http://localhost:5000/api/github/callback
+FRONTEND_URL=http://localhost:5173
+DEPLOY_URL_TEMPLATE=http://{slug}.localhost:8080
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
 ```
 
-Proxy (`proxy/.env`):
+**Proxy** (`proxy/.env`):
 
 ```
 PORT=8080
 DATABASE_URL=mongodb://localhost:27017/hostic
-R2_ACCESS_KEY=<r2-access-key>
-R2_SECRET_KEY=<r2-secret>
-R2_BUCKET=<bucket-name>
+APPS_DOMAIN=localhost
+R2_ENDPOINT=...
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET=...
 ```
 
-Frontend (`frontend/.env`):
+**Frontend** (`frontend/.env`):
 
 ```
 VITE_API_URL=http://localhost:5000/api
+VITE_DEPLOY_URL_TEMPLATE=http://{slug}.localhost:8080
 ```
 
-### 2) Install & Build
+### Install & Run
 
-```
-cd api && npm i && npm run build
-cd ../proxy && npm i && npm run build
-cd ../frontend && pnpm i || npm i && npm run build
+```bash
+cd api && npm i && npm run dev      # :5000 — API + Socket.IO
+cd proxy && npm i && npm run dev    # :8080
+cd frontend && npm i && npm run dev # :5173
+
+# Optional CLI
+cd cli && npm i && npm run build && npm link
 ```
 
-### 3) Run
-
-In separate terminals:
-
-```
-cd api && npm run start
-cd proxy && npm run start
-cd frontend && npm run dev
-```
+Do **not** run a separate `socket/` service — Socket.IO is merged into the API.
 
 ---
 
-## Deploying a Project (from the UI)
+## Deploying a Project
 
-1. Login/Signup to get a token.
-2. Open Deploy page and provide:
-   - Repo URL (public read)
-   - Project type (react/vite/static)
-   - Install commands (e.g., `npm ci`)
-   - Build commands (e.g., `npm run build`)
-   - Optional build directory (e.g., `frontend`)
-3. Watch logs live; once status is `success`, your site is at `https://{slug}.apps.shribuilds.in`.
+### Dashboard
+
+1. Login/signup.
+2. Open Deploy → connect GitHub → pick a repo (commands autofill from `package.json`).
+3. Watch live logs on the build page.
+4. Visit `http://{slug}.localhost:8080` when the build succeeds.
+
+### CLI
+
+```bash
+hostic login
+cd my-vite-app
+hostic deploy --slug my-app
+```
+
+Push changes, run `hostic deploy --slug my-app` again — same slug, new build.
 
 ---
 
 ## Notes and Limitations
 
-=
+- Queue is in-memory (single API instance). Use BullMQ for HA.
+- Single build concurrency by default.
+- Docker required on the API host.
+- GitHub webhooks require a public `API_PUBLIC_URL`.
+- Public repos only — private repo clone not yet implemented.
+- Max 3 deployments per user, max 50 builds per deployment.
 
-- Queue is in-memory (single instance). Use a persistent queue (e.g., Redis + BullMQ) for HA.
-- Single concurrency by default; adjust per environment.
-- Docker is required on the API host.
-- R2 bucket and credentials must be configured; proxy needs read access via presigned URLs.
+---
+
+## Documentation
+
+| File | Purpose |
+|------|---------|
+| `ARCHITECTURE.md` | Current system architecture |
+| `Platform.md` | Build lifecycle deep dive |
+| `cli/README.md` | CLI reference |
+| `INTERVIEW_PITCH.md` | Interview elevator pitch and demo script |
+| `INTERVIEW_TECH.md` | Technical deep dive for interviews |
+| `DESIGN.md` | UI design tokens |
