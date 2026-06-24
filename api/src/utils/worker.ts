@@ -21,6 +21,7 @@ import {
   copyRepoToWorkDir,
   getDeploymentCacheDir,
   getLockfileInfo,
+  normalizeBuildDir,
   resolveProjectRoot,
   syncCachedRepo,
 } from "./deploymentCache";
@@ -50,6 +51,7 @@ export async function processJob(job: BuildJob) {
     logger.log("Starting build");
     logger.log(`Repository: ${repo_url}`);
     logger.log(`Branch: ${branch} · Framework: ${project_type}`);
+    logger.log(`Build directory: ${normalizeBuildDir(jobBuildDir)}`);
 
     const build = await Builds.findOneAndUpdate(
       { build_name: buildId },
@@ -63,7 +65,7 @@ export async function processJob(job: BuildJob) {
     const repoDir = await syncCachedRepo(cacheDir, repo_url, branch, logger);
     await copyRepoToWorkDir(repoDir, workDir, logger);
 
-    const projectRoot = resolveProjectRoot(workDir, jobBuildDir || "./", logger);
+    const projectRoot = resolveProjectRoot(workDir, jobBuildDir, logger);
     const projectRootRel =
       path.relative(workDir, projectRoot).replace(/\\/g, "/") || ".";
 
@@ -126,7 +128,7 @@ ${buildCommands}
       logger
     );
 
-    const artifactPath = detectArtifactPath(workDir, project_type, logger);
+    const artifactPath = detectArtifactPath(projectRoot, project_type, logger);
     if (!artifactPath) {
       logger.error("Build output folder not found");
       throw new Error("build output folder not found");

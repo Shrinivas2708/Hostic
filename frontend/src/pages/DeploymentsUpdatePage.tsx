@@ -128,6 +128,10 @@ export default function DeploymentDetailsPage() {
                 <dd className="font-mono">{deployment.branch}</dd>
               </div>
               <div className="flex justify-between">
+                <dt className="text-muted">Directory</dt>
+                <dd className="font-mono">{deployment.buildDir || "./"}</dd>
+              </div>
+              <div className="flex justify-between">
                 <dt className="text-muted">Project type</dt>
                 <dd className="capitalize">{deployment.projectType}</dd>
               </div>

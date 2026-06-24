@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useDeploy } from "../hooks/useDeploy";
+import { useDeployStore } from "../store/deployStore";
 import { BuildStatus, formatDate } from "../exports";
 import { useEffect, useRef, useState } from "react";
 import url from "../lib/socket";
@@ -24,13 +25,16 @@ function formatElapsed(seconds: number): string {
 function BuildPage() {
   const { buildName, id } = useParams();
   const navigate = useNavigate();
-  const { build, deployment, fetchDeployment, fetchBuild } = useDeploy();
+  const { build, deployment } = useDeploy();
+  const fetchDeployment = useDeployStore((s) => s.fetchDeployment);
+  const fetchBuild = useDeployStore((s) => s.fetchBuild);
   const [loadingBuild, setLoadingBuild] = useState(true);
   const [logs, setLogs] = useState<BuildLogEntry[]>([]);
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
   const [elapsedSec, setElapsedSec] = useState(0);
   const logContainerRef = useRef<HTMLDivElement>(null);
   const queuedAtRef = useRef<number>(Date.now());
+  const hydratedLogsKeyRef = useRef<string | null>(null);
 
   // Reset UI when switching to a different build
   useEffect(() => {
@@ -39,6 +43,7 @@ function BuildPage() {
     setLiveStatus(null);
     setElapsedSec(0);
     queuedAtRef.current = Date.now();
+    hydratedLogsKeyRef.current = null;
   }, [buildName]);
 
   useEffect(() => {
@@ -50,12 +55,16 @@ function BuildPage() {
     }
   }, [id, buildName, fetchDeployment, fetchBuild]);
 
-  // Load persisted logs after fetch (completed builds + page refresh mid-build)
+  // Load persisted logs once after fetch (completed builds + page refresh mid-build)
   useEffect(() => {
     if (loadingBuild || !build || build.build_name !== buildName) return;
-    if (build.logs?.length) {
-      setLogs(build.logs);
-    }
+    if (!build.logs?.length) return;
+
+    const hydrateKey = `${build.build_name}:${build.logs.length}:${build.logs.at(-1)?.at ?? 0}`;
+    if (hydratedLogsKeyRef.current === hydrateKey) return;
+
+    hydratedLogsKeyRef.current = hydrateKey;
+    setLogs(build.logs);
   }, [loadingBuild, build, buildName]);
 
   useEffect(() => {

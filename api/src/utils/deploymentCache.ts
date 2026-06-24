@@ -111,20 +111,37 @@ function shouldSkipCachedPath(src: string, repoRoot: string): boolean {
   return rel.split(path.sep).some((part) => SKIP_COPY_DIRS.has(part));
 }
 
+export function normalizeBuildDir(buildDir?: string): string {
+  const raw = (buildDir ?? "./").trim().replace(/\\/g, "/");
+  if (!raw || raw === ".") return "./";
+  return raw.replace(/^\.\/+/, "") || "./";
+}
+
 export function resolveProjectRoot(
   workDir: string,
-  buildDir: string,
+  buildDir: string | undefined,
   logger: BuildLogger
 ): string {
-  const normalizedBuildDir = buildDir || "./";
+  const normalizedBuildDir = normalizeBuildDir(buildDir);
+  const isExplicitSubdir = normalizedBuildDir !== "./";
   const fullPath = path.resolve(workDir, normalizedBuildDir);
+
+  if (!fs.existsSync(fullPath)) {
+    throw new Error(`Build directory not found: ${normalizedBuildDir}`);
+  }
 
   if (fs.existsSync(path.join(fullPath, "package.json"))) {
     logger.log(`Using project directory: ${normalizedBuildDir}`);
     return fullPath;
   }
 
-  logger.log(`No package.json in ${normalizedBuildDir}, detecting project root...`);
+  if (isExplicitSubdir) {
+    throw new Error(
+      `No package.json in "${normalizedBuildDir}". Check your directory setting.`
+    );
+  }
+
+  logger.log("No package.json in ./, detecting project root...");
   const detected = findProjectRoot(workDir);
   if (!detected) {
     throw new Error("package.json not found in repository");

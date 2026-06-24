@@ -43,6 +43,7 @@ const deploymentsSchema = new Schema<IDeployment>(
     current_build_id: { type: Schema.Types.ObjectId, ref: "Builds", default: null },
     buildCommands: { type: String, default: "" },
     installCommands: { type: String, default: "" },
+    buildDir: { type: String, default: "./", trim: true },
     img_url:{type:String},
     img_id:{type:String},
     buildNo:{type:Number},

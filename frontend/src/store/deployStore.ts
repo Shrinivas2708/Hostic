@@ -28,6 +28,7 @@ export type Deployment = {
   projectType: string;
   buildCommands?: string;
   installCommands?:string
+  buildDir?: string;
   createdAt: string;
   current_build_id: string;
   img_url:string;
