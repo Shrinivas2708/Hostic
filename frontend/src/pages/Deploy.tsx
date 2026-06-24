@@ -122,7 +122,7 @@ function Deploy() {
       addToast({
         title: "Success",
         description: ownerParam
-          ? "Deployment started! GitHub auto-deploy webhook configured."
+          ? "Deployment started! Pushes to this branch will auto-redeploy."
           : "Deployment started successfully!",
         color: "success",
       });

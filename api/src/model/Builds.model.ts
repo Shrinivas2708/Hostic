@@ -1,4 +1,6 @@
 import mongoose, { model, Schema } from "mongoose";
+import type { LogLevel } from "../utils/pub";
+
 export enum BuildStatus {
   Queued = "queued",
   Building = "building",
@@ -15,7 +17,27 @@ export interface IBuild extends Document {
   finishedAt?: Date;
   duration?: number;
   triggeredBy?: "manual" | "webhook";
+  logs?: BuildLogEntry[];
 }
+
+export type BuildLogEntry = {
+  level: LogLevel;
+  message: string;
+  at: number;
+};
+
+const buildLogSchema = new Schema<BuildLogEntry>(
+  {
+    level: {
+      type: String,
+      enum: ["info", "error", "stdout", "stderr", "success"],
+      required: true,
+    },
+    message: { type: String, required: true },
+    at: { type: Number, required: true },
+  },
+  { _id: false }
+);
 
 const buildsSchema = new Schema<IBuild>(
   {
@@ -37,6 +59,7 @@ const buildsSchema = new Schema<IBuild>(
     finishedAt: Date,
     duration: { type: Number, default: 0 },
     triggeredBy: { type: String, enum: ["manual", "webhook"], default: "manual" },
+    logs: { type: [buildLogSchema], default: [] },
   },
   { timestamps: true }
 );

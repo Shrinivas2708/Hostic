@@ -1,10 +1,9 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
-const url = 'http://localhost:5000/api'
-// const url = 'https://api.shribuilds.in/api'
-// const url = "https://hostit-1.onrender.com/api"
+import { config } from './config';
+
 const instance = axios.create({
-  baseURL: url,
+  baseURL: config.apiUrl,
 });
 
 instance.interceptors.request.use((config) => {

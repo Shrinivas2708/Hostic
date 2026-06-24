@@ -21,16 +21,33 @@ subClient.on("reconnecting", () => console.log("Redis Sub reconnecting..."));
 // Updated subscribeLogs with proper arguments
 export async function subscribeLogs(
   buildId: string,
-  onMessage: (msg: string) => void,
+  onMessage: (entry: { level?: string; message: string; at?: number }) => void,
 ) {
   const pattern = `logs:${buildId}`;
   await subClient.pSubscribe(pattern, (message, channel) => {
     if (channel === pattern) {
       try {
-        onMessage(message);
-      } catch (err: any) {
-        console.error(`❌ Error processing log message: ${err.message}`);
+        const entry = JSON.parse(message) as {
+          level?: string;
+          message?: string;
+          at?: number;
+        };
+        if (entry?.message) {
+          onMessage({
+            level: entry.level,
+            message: entry.message,
+            at: entry.at,
+          });
+          return;
+        }
+      } catch {
+        /* legacy string payload */
       }
+      onMessage({
+        level: "info",
+        message: message.replace(/^"|"$/g, ""),
+        at: Date.now(),
+      });
     }
   });
   console.log(`✅ Subscribed to ${pattern}`);

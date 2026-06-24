@@ -24,13 +24,15 @@ export function PageHeader({
   title,
   description,
   badge,
+  className,
 }: {
   title: string;
   description?: string;
   badge?: string;
+  className?: string;
 }) {
   return (
-    <div className="mb-6">
+    <div className={cn("mb-6", className)}>
       {badge && (
         <span className="mb-2 inline-block rounded-pill bg-brand px-2.5 py-0.5 text-caption-upper text-on-primary">
           {badge}

@@ -1,16 +1,10 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { BuildLogger } from "./logger";
-import fs from "fs"
+import fs from "fs";
 import mime from "mime";
 import path from "path";
-const s3Client = new S3Client({
-  region: "auto",
-  endpoint: process.env.R2_ENDPOINT,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
-  },
-});
+import { getR2Bucket, r2Client } from "./r2Client";
+
 export default async function uploadDirectoryToR2(
   localDir: string,
   r2Prefix: string,
@@ -30,20 +24,18 @@ export default async function uploadDirectoryToR2(
       const fileContent = await fs.promises.readFile(fullPath);
       const contentType = mime.getType(fullPath) || "application/octet-stream";
 
-      // logger.log(`Uploading ${fullPath} to ${r2Key} (Content-Type: ${contentType})`);
-
       try {
-        await s3Client.send(
+        await r2Client.send(
           new PutObjectCommand({
-            Bucket: bucket,
+            Bucket: bucket || getR2Bucket(),
             Key: r2Key,
             Body: fileContent,
             ContentType: contentType,
           })
         );
-        // logger.log(`Successfully uploaded ${r2Key}`);
-      } catch (err: any) {
-        logger.error(`Failed to upload ${r2Key}: ${err.message}`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error(`Failed to upload ${r2Key}: ${message}`);
         throw err;
       }
     }

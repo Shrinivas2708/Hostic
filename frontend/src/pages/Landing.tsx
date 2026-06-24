@@ -7,6 +7,7 @@ import { HowItWorks } from "../components/HowItWorks";
 import { Features } from "../components/Feature";
 import Contact from "../components/Contact";
 import Pricing from "../components/Pricing";
+import { getDeploymentExampleHost } from "../lib/config";
 
 const stats = [
   { value: "3", label: "Free deployments" },
@@ -71,7 +72,7 @@ const Landing = () => {
                 {"\n\n"}
                 <span className="text-success">✓</span>{" "}
                 <span className="text-copy-strong">
-                  Published at my-app.apps.shribuilds.in
+                  Published at {getDeploymentExampleHost()}
                 </span>
               </pre>
             </CodeWindow>

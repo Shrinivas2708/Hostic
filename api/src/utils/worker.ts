@@ -1,5 +1,5 @@
-import git from "simple-git";
 import fs from "fs";
+import path from "path";
 import { Builds, BuildStatus } from "../model/Builds.model";
 import { Deployments } from "../model/Deployments.model";
 import { BuildJob } from "./buildQueue";
@@ -8,13 +8,24 @@ import { detectArtifactPath } from "./detectArtifactPath";
 import { getWorkDir } from "./getWorkDir";
 import { runStreamingDocker } from "./runStreaming";
 import { dockerCmd } from "./dockercmd";
-import { publishLog, publishStatus, redisReady } from "./pub";
-import { findProjectRoot } from "./findProjectRoot";
+import { publishStatus, redisReady } from "./pub";
 import uploadDirectoryToR2 from "./upload";
-import path from "path";
-// import delay from "./delay";
+import { flushBuildLogs } from "./persistBuildLogs";
+import { safeRemoveDir } from "./dockerFs";
+import {
+  canReuseDepsFromR2,
+  restoreDepsFromR2,
+  saveDepsToR2,
+} from "./depsCache";
+import {
+  copyRepoToWorkDir,
+  getDeploymentCacheDir,
+  getLockfileInfo,
+  resolveProjectRoot,
+  syncCachedRepo,
+} from "./deploymentCache";
 
-export async function processJob(job: BuildJob): Promise<string[]> {
+export async function processJob(job: BuildJob) {
   const {
     buildId,
     deploymentId,
@@ -23,25 +34,23 @@ export async function processJob(job: BuildJob): Promise<string[]> {
     project_type,
     installCommands,
     buildCommands,
-    buildDir,
-    branch,
+    buildDir: jobBuildDir,
   } = job;
 
+  const branch = job.branch || "main";
   const logger = makeBuildLogger(buildId);
   const startedAt = new Date();
   let workDir = "";
+  const cacheDir = getDeploymentCacheDir(deploymentId);
 
   try {
     await redisReady;
-    // await delay(2000)
     await publishStatus(buildId, BuildStatus.Building);
 
-    logger.log(`🚀 Starting build for `);
-    logger.log(
-      `📦 Repo: ${repo_url} | Slug: ${slug} | Type: ${project_type} | Build Cmd: ${buildCommands}`
-    );
+    logger.log("Starting build");
+    logger.log(`Repository: ${repo_url}`);
+    logger.log(`Branch: ${branch} · Framework: ${project_type}`);
 
-    // Update Builds to "Building"
     const build = await Builds.findOneAndUpdate(
       { build_name: buildId },
       { status: BuildStatus.Building, startedAt },
@@ -49,72 +58,90 @@ export async function processJob(job: BuildJob): Promise<string[]> {
     );
     if (!build) throw new Error(`Build with build_name ${buildId} not found`);
 
-    // Prepare workspace
     workDir = await getWorkDir(buildId);
-    // logger.log(`📁 Workspace ready: ${workDir}`);
-    logger.log(`📁 Workspace ready to install and build`);
 
-    // Clone the repo (specific branch)
-    const branch = job.branch || "main";
-    logger.log("📥 Cloning repository...");
-    await git().clone(repo_url, workDir, ["--branch", branch, "--single-branch"]);
-    logger.log(`✅ Repository cloned successfully (branch: ${branch}).`);
+    const repoDir = await syncCachedRepo(cacheDir, repo_url, branch, logger);
+    await copyRepoToWorkDir(repoDir, workDir, logger);
 
-    // Step A: Install dependencies
-    const buildDir = job.buildDir || "./";
-    const fullPath = path.resolve(workDir, buildDir);
-    console.log(buildDir)
-    // First check if user-specified dir has package.json
-    let projectRoot = "";
-    if (fs.existsSync(path.join(fullPath, "package.json"))) {
-      projectRoot = fullPath;
-      logger.log(`📦 Using user-specified directory: ${buildDir}`);
-    } else {
-      logger.log(
-        `🔍 package.json not found in ${buildDir}, falling back to auto-detect...`
-      );
-      const detected = findProjectRoot(workDir);
-      if (!detected) {
-        logger.error("⚠️ package.json not found anywhere. Cannot proceed.");
-        throw new Error("package.json not found in repository");
+    const projectRoot = resolveProjectRoot(workDir, jobBuildDir || "./", logger);
+    const projectRootRel =
+      path.relative(workDir, projectRoot).replace(/\\/g, "/") || ".";
+
+    const lockfileInfo = getLockfileInfo(projectRoot);
+    const depsCacheMeta =
+      lockfileInfo &&
+      (await canReuseDepsFromR2(slug, lockfileInfo, projectRootRel));
+    let skipInstall = !!depsCacheMeta;
+
+    if (skipInstall && depsCacheMeta) {
+      try {
+        await restoreDepsFromR2(slug, depsCacheMeta, projectRoot, logger);
+        logger.success(
+          `Skipping install — ${depsCacheMeta.lockfile} unchanged (loaded from storage)`
+        );
+      } catch {
+        skipInstall = false;
+        logger.log("Storage cache restore failed — running fresh install");
       }
-      projectRoot = detected;
-      logger.log(`📁 Detected project root at: ${projectRoot}`);
     }
 
-    const combinedCmd = `
-echo "[INSTALL] Starting to install packages..." && \
-${installCommands} && \
+    if (!skipInstall) {
+      const installCmd = `
+echo "[INSTALL] Installing packages..." && \
+${installCommands}
+`.trim();
+
+      logger.log("Installing dependencies...");
+      await runStreamingDocker(
+        dockerCmd(projectRoot, installCmd, `build-${buildId}-install`),
+        logger
+      );
+
+      if (lockfileInfo) {
+        try {
+          await saveDepsToR2(
+            slug,
+            projectRoot,
+            lockfileInfo,
+            projectRootRel,
+            logger
+          );
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          logger.log(
+            `Could not save dependencies to storage (${msg}) — future builds will reinstall`
+          );
+        }
+      }
+    }
+
+    const buildCmd = `
 echo "[BUILD] Starting build process..." && \
 ${buildCommands}
 `.trim();
 
-    const dockerArgs = dockerCmd(projectRoot, combinedCmd, `build-${buildId}`);
+    logger.log("Running build...");
+    await runStreamingDocker(
+      dockerCmd(projectRoot, buildCmd, `build-${buildId}`),
+      logger
+    );
 
-    logger.log(`📦 Installing & building inside  container...`);
-    await runStreamingDocker(dockerArgs, logger);
-    logger.log("✅ Install & build steps completed successfully.");
-
-    // Step C: Detect artifact output
-    // logger.log("🔍 Detecting build output artifacts...");
     const artifactPath = detectArtifactPath(workDir, project_type, logger);
     if (!artifactPath) {
-      logger.error("⚠️ Build output folder not found.");
+      logger.error("Build output folder not found");
       throw new Error("build output folder not found");
     }
-    // logger.log(`📦 Artifacts found at: ${artifactPath}`);
 
     const r2KeyPrefix = `__output/${slug}/${buildId}/`;
-    logger.log(`☁️ Uploading output for ${slug} `);
+    logger.log(`Uploading artifacts to storage...`);
     await uploadDirectoryToR2(
       artifactPath,
       r2KeyPrefix,
       process.env.R2_BUCKET!,
       logger
     );
-    logger.log("✅ Build uploaded successfully.");
+    logger.success("Artifacts uploaded");
 
-    // Step D: Finalize build status
     const finishedAt = new Date();
     await Builds.findOneAndUpdate(
       { build_name: buildId },
@@ -132,18 +159,16 @@ ${buildCommands}
     });
     await publishStatus(buildId, BuildStatus.Success);
 
-    logger.log("🎉 Build process completed successfully.");
-  } catch (err: any) {
-    const errorMsg = `❌ Build failed: ${err?.message || err}`;
-    // await publishStatus(buildId, BuildStatus.Failed);
+    logger.success("Deployment build completed");
+  } catch (err: unknown) {
+    const errorMsg =
+      err instanceof Error ? err.message : "Build failed unexpectedly";
     logger.error(errorMsg);
 
-    // Publish log to Redis (non-blocking for status update)
     try {
-      await publishLog(buildId, errorMsg);
       await publishStatus(buildId, BuildStatus.Failed);
     } catch (pubErr) {
-      console.error("⚠️ Failed to publish log to Redis:", pubErr);
+      console.error("Failed to publish status to Redis:", pubErr);
     }
 
     await Builds.findOneAndUpdate(
@@ -155,14 +180,23 @@ ${buildCommands}
       { new: true }
     );
   } finally {
-    // Cleanup workspace
-    if (workDir && fs.existsSync(workDir)) {
-      logger.log("🧹 Cleaning up workspace...");
-      await fs.promises.rm(workDir, { recursive: true, force: true });
-      logger.log("🧼 Workspace cleaned.");
+    try {
+      await flushBuildLogs(buildId);
+    } catch (err) {
+      console.error(`Failed to flush logs for ${buildId}:`, err);
     }
 
-    logger.log("🏁 Build job complete.");
+    if (workDir && fs.existsSync(workDir)) {
+      logger.log("Cleaning up workspace...");
+      try {
+        await safeRemoveDir(workDir);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.log(`Warning: workspace cleanup incomplete (${msg})`);
+      }
+    }
+
+    logger.log("Build job finished");
   }
 
   return logger.getLogs();

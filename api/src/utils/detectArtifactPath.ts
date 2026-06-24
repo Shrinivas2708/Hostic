@@ -12,7 +12,7 @@ export function detectArtifactPath(
   projectType: string,
   logger: BuildLogger
 ): string | null {
-  logger.log(`🔍 detect artifacts (projectType=${projectType}) in ${workDir}`);
+  logger.log(`Detecting build output (${projectType})`);
 
   const typeHints: Record<string, string[]> = {
     vite: ["dist"],
@@ -35,7 +35,7 @@ export function detectArtifactPath(
 
       if (entry.isDirectory()) {
         if (candidates.has(entry.name)) {
-          logger.log(` • FOUND artifact: ${fullPath}`);
+          logger.success(`Found output: ${path.relative(workDir, fullPath) || entry.name}`);
           return fullPath;
         }
         const found = searchDir(fullPath);
@@ -46,6 +46,6 @@ export function detectArtifactPath(
   }
 
   const result = searchDir(workDir);
-  if (!result) logger.error("No artifact directory found.");
+  if (!result) logger.error("No build output directory found");
   return result;
 }

@@ -4,10 +4,13 @@ import { Deployments, ProjectType } from "../model/Deployments.model";
 import { BuildStatus } from "../model/Builds.model";
 import { User } from "../model/User.model";
 import { captureAndUploadScreenshot, Delete } from "../utils/imagesHandle";
+import { getDeploymentUrl } from "../utils/urls";
 import {
   generateWebhookSecret,
   triggerDeploymentBuild,
 } from "../utils/triggerBuild";
+import { removeDeploymentCache } from "../utils/deploymentCache";
+import { deleteDepsCache } from "../utils/depsCache";
 import { Builds } from "../model/Builds.model";
 import {
   setupGitHubWebhookForDeployment,
@@ -298,7 +301,7 @@ export const getDeployment = async (
   const user_id = req.id;
   const { deployment_id } = req.query;
   try {
-    const deployment = await Deployments.findOne({
+    let deployment = await Deployments.findOne({
       _id: deployment_id,
       user_id: user_id,
     });
@@ -306,6 +309,13 @@ export const getDeployment = async (
       res.status(401).json({ meesage: "No deployments!" });
       return;
     }
+
+    const user = await User.findById(user_id).select("+githubAccessToken");
+    if (user_id && user?.githubAccessToken && !deployment.githubWebhookManaged) {
+      await setupGitHubWebhookForDeployment(deployment, user_id);
+      deployment = await Deployments.findById(deployment._id);
+    }
+
     res.status(200).json({ deployment });
   } catch (error) {
     next(error);
@@ -355,6 +365,14 @@ export const deleteDeployment = async (
 
     await Builds.deleteMany({ deployment_id });
 
+    await removeDeploymentCache(deployment_id);
+
+    try {
+      await deleteDepsCache(deployment.slug);
+    } catch (err) {
+      console.warn("Failed to delete dependency cache from storage:", err);
+    }
+
     if (deployment.img_id) {
       try {
         await Delete(deployment.img_id);
@@ -386,7 +404,7 @@ export const getBuildsForDeployment = async (
       return res.status(400).json({ message: "deployment_id is required" });
     }
 
-    const builds = await Builds.find({ deployment_id });
+    const builds = await Builds.find({ deployment_id }).select("-logs");
 
     res.status(200).json({ builds });
   } catch (error) {
@@ -415,8 +433,7 @@ export const getImgForBuild = async (
     if (!Build) return res.status(404).json({ error: "Build not found" });
 
     const name = `${Deployment.slug}&${Build.build_name}`;
-    const url = `https://${Deployment.slug}.apps.shribuilds.in`;
-    // const url = `http://${Deployment.slug}.localhost:8080`;
+    const url = getDeploymentUrl(Deployment.slug);
 
     if (
       Deployment.img_url &&

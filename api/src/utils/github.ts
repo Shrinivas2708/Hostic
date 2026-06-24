@@ -137,21 +137,56 @@ export type GitHubRepo = {
   owner: { login: string; avatar_url: string };
 };
 
-export async function listUserRepos(accessToken: string): Promise<GitHubRepo[]> {
-  const repos: GitHubRepo[] = [];
-  let page = 1;
+export async function listUserReposPaginated(
+  accessToken: string,
+  options: {
+    page?: number;
+    per_page?: number;
+    q?: string;
+    username?: string;
+  }
+): Promise<{ repos: GitHubRepo[]; has_more: boolean; page: number }> {
+  const page = Math.max(1, options.page ?? 1);
+  const per_page = Math.min(Math.max(options.per_page ?? 10, 1), 30);
 
-  while (page <= 5) {
+  if (options.q?.trim() && options.username) {
+    const query = encodeURIComponent(
+      `${options.q.trim()} in:name,description user:${options.username}`
+    );
     const res = await githubFetch(
       accessToken,
-      `https://api.github.com/user/repos?per_page=100&page=${page}&sort=updated`
+      `https://api.github.com/search/repositories?q=${query}&per_page=${per_page}&page=${page}&sort=updated`
     );
-    const batch = (await res.json()) as GitHubRepo[];
-    repos.push(...batch);
-    if (batch.length < 100) break;
-    page++;
+    const data = (await res.json()) as {
+      items: GitHubRepo[];
+      total_count: number;
+    };
+    const items = data.items ?? [];
+    return {
+      repos: items,
+      has_more: page * per_page < (data.total_count ?? 0),
+      page,
+    };
   }
 
+  const res = await githubFetch(
+    accessToken,
+    `https://api.github.com/user/repos?per_page=${per_page}&page=${page}&sort=updated&affiliation=owner,collaborator,organization_member`
+  );
+  const batch = (await res.json()) as GitHubRepo[];
+  return {
+    repos: batch,
+    has_more: batch.length === per_page,
+    page,
+  };
+}
+
+/** @deprecated Use listUserReposPaginated */
+export async function listUserRepos(accessToken: string): Promise<GitHubRepo[]> {
+  const { repos } = await listUserReposPaginated(accessToken, {
+    page: 1,
+    per_page: 30,
+  });
   return repos;
 }
 

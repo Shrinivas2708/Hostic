@@ -1,13 +1,11 @@
-// src/utils/runStreaming.ts
 import { spawn } from "child_process";
 import type { BuildLogger } from "./logger";
 
-/*
- * Spawn docker (argv form) and stream stdout/stderr chunks to logger.
- * We split on newlines but also emit partial lines so progress bars show.
- */
-export function runStreamingDocker(argv: string[], logger: BuildLogger): Promise<void> {
-  logger.log(`Running container`);
+export function runStreamingDocker(
+  argv: string[],
+  logger: BuildLogger
+): Promise<void> {
+  logger.log("Running build container");
 
   return new Promise((resolve, reject) => {
     const child = spawn("docker", argv, { stdio: ["ignore", "pipe", "pipe"] });
@@ -17,27 +15,27 @@ export function runStreamingDocker(argv: string[], logger: BuildLogger): Promise
 
     child.stdout.on("data", (chunk: string) => {
       chunk.split(/\r?\n/).forEach((line) => {
-        if (line.trim().length) logger.log(`📜 ${line}`);
+        if (line.trim().length) logger.stdout(line);
       });
     });
 
     child.stderr.on("data", (chunk: string) => {
       chunk.split(/\r?\n/).forEach((line) => {
-        if (line.trim().length) logger.error(`⚠️ ${line}`);
+        if (line.trim().length) logger.stderr(line);
       });
     });
 
     child.on("error", (err) => {
-      logger.error(`spawn error: ${err.message}`);
+      logger.error(`Docker spawn error: ${err.message}`);
       reject(err);
     });
 
     child.on("close", (code) => {
       if (code === 0) {
-        logger.log("✅  step exited 0");
+        logger.success("Install and build completed");
         resolve();
       } else {
-        logger.error(`❌  step failed (exit ${code})`);
+        logger.error(`Build failed with exit code ${code}`);
         reject(new Error(`docker exit ${code}`));
       }
     });

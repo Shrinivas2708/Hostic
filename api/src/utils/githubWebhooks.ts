@@ -7,13 +7,7 @@ import {
   parseOwnerRepo,
   updateRepoWebhook,
 } from "./github";
-
-function getApiPublicUrl(): string {
-  return (process.env.API_PUBLIC_URL || "http://localhost:5000").replace(
-    /\/$/,
-    ""
-  );
-}
+import { getApiPublicUrl, isPublicWebhookUrl } from "./urls";
 
 export async function setupGitHubWebhookForDeployment(
   deployment: IDeployment,
@@ -26,6 +20,13 @@ export async function setupGitHubWebhookForDeployment(
   if (!parsed) return;
 
   const webhookUrl = `${getApiPublicUrl()}/api/webhooks/github/${deployment.webhookSecret}`;
+
+  if (!isPublicWebhookUrl(webhookUrl)) {
+    console.warn(
+      `[GitHub] Skipping webhook for ${deployment.slug}: API_PUBLIC_URL must be publicly reachable (current: ${getApiPublicUrl()}). Use ngrok/cloudflare tunnel in dev, or deploy the API.`
+    );
+    return;
+  }
 
   try {
     const hookId = await createRepoWebhook(
@@ -128,6 +129,13 @@ export async function refreshGitHubWebhookSecret(
   if (!parsed) return;
 
   const webhookUrl = `${getApiPublicUrl()}/api/webhooks/github/${newSecret}`;
+
+  if (!isPublicWebhookUrl(webhookUrl)) {
+    console.warn(
+      `[GitHub] Skipping webhook refresh for ${deployment.slug}: API_PUBLIC_URL is not publicly reachable.`
+    );
+    return;
+  }
 
   try {
     if (deployment.githubWebhookId) {

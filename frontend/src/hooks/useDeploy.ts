@@ -22,10 +22,6 @@ export const useDeploy = () => {
     redeployed,
     getImg,
     deploy_img,
-    webhookInfo,
-    fetchWebhookInfo,
-    updateAutoDeploy,
-    regenerateWebhookSecret,
   } = useDeployStore();
 
   const [loading, setLoading] = useState(false);
@@ -65,7 +61,6 @@ export const useDeploy = () => {
     redeployed,
     selectDeployment,
     deploy_img,
-    webhookInfo,
     fetchDeployment: (id: string) => safeCall(() => fetchDeployment(id)),
     fetchDeployments: () => safeCall(fetchDeployments),
     fetchBuilds: (id: string) => safeCall(() => fetchBuilds(id)),
@@ -75,10 +70,5 @@ export const useDeploy = () => {
     deleteDeployment: (slug: string) => safeCall(() => deleteDeployment(slug)),
     fetchBuild: (build_name: string) => safeCall(() => fetchBuild(build_name)),
     getImg:(id:string) => safeCall(()=> getImg(id)),
-    fetchWebhookInfo: (id: string) => safeCall(() => fetchWebhookInfo(id)),
-    updateAutoDeploy: (id: string, enabled: boolean) =>
-      safeCall(() => updateAutoDeploy(id, enabled)),
-    regenerateWebhookSecret: (id: string) =>
-      safeCall(() => regenerateWebhookSecret(id)),
   };
 };

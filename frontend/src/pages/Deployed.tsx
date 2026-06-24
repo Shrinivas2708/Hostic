@@ -5,6 +5,7 @@ import { Spinner } from "@heroui/spinner";
 import { Card } from "../components/ui/card";
 import { PageContainer, PageHeader } from "../components/layout/PageContainer";
 import { Button } from "../components/ui/button";
+import { getDeploymentUrl, getDeploymentHost } from "../lib/config";
 
 function Deployed() {
   const { id } = useParams();
@@ -17,7 +18,8 @@ function Deployed() {
     fetchDeployment(id);
   }, [id]);
 
-  const siteUrl = `https://${deployment?.slug}.apps.shribuilds.in`;
+  const siteUrl = deployment?.slug ? getDeploymentUrl(deployment.slug) : "#";
+  const siteHost = deployment?.slug ? getDeploymentHost(deployment.slug) : "";
 
   return (
     <PageContainer narrow>
@@ -59,7 +61,7 @@ function Deployed() {
             className="mt-1 inline-block font-mono text-brand underline"
             onClick={(e) => e.stopPropagation()}
           >
-            {deployment?.slug}.apps.shribuilds.in
+            {siteHost}
           </a>
         </div>
 

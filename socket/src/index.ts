@@ -29,10 +29,9 @@ io.on("connection", (socket) => {
     console.log(`Sent initial status ${latestStatuses.get(buildId)} to client for buildId: ${buildId}`);
   }
 
-  subscribeLogs(buildId, (msg) => {
+  subscribeLogs(buildId, (entry) => {
     if (socket.connected) {
-      console.log(`Sending log to client for buildId: ${buildId}: ${msg}`);
-      socket.emit("log", msg);
+      socket.emit("log", entry);
     }
   }).catch((err) => {
     console.error(`Subscription failed for logs:${buildId}: ${err.message}`);

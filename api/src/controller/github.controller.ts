@@ -8,7 +8,7 @@ import {
   getGitHubOAuthUrl,
   getRepo,
   listRepoBranches,
-  listUserRepos,
+  listUserReposPaginated,
   verifyGitHubOAuthState,
 } from "../utils/github";
 import { removeGitHubWebhookForDeployment } from "../utils/githubWebhooks";
@@ -153,15 +153,29 @@ export const listRepos = async (
   next: NextFunction
 ) => {
   try {
-    const user = await User.findById(req.id).select("+githubAccessToken");
+    const user = await User.findById(req.id).select(
+      "+githubAccessToken githubUsername"
+    );
     if (!user?.githubAccessToken) {
       return res.status(400).json({ message: "GitHub is not connected" });
     }
 
-    const repos = await listUserRepos(user.githubAccessToken);
+    const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+    const per_page = Math.min(
+      Math.max(parseInt(String(req.query.per_page ?? "10"), 10) || 10, 1),
+      30
+    );
+    const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+
+    const result = await listUserReposPaginated(user.githubAccessToken, {
+      page,
+      per_page,
+      q: q || undefined,
+      username: user.githubUsername ?? undefined,
+    });
 
     res.json({
-      repos: repos.map((r) => ({
+      repos: result.repos.map((r) => ({
         id: r.id,
         name: r.name,
         full_name: r.full_name,
@@ -173,6 +187,9 @@ export const listRepos = async (
         owner: r.owner.login,
         owner_avatar: r.owner.avatar_url,
       })),
+      page: result.page,
+      per_page,
+      has_more: result.has_more,
     });
   } catch (err) {
     next(err);

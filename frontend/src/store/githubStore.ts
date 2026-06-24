@@ -19,14 +19,28 @@ type GitHubStatus = {
   username: string | null;
 };
 
+type ReposResult = {
+  repos: GitHubRepo[];
+  page: number;
+  per_page: number;
+  has_more: boolean;
+};
+
 type GitHubStore = {
   status: GitHubStatus | null;
   repos: GitHubRepo[];
+  reposPage: number;
+  reposHasMore: boolean;
   loadingRepos: boolean;
   fetchStatus: () => Promise<GitHubStatus>;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
-  fetchRepos: () => Promise<GitHubRepo[]>;
+  fetchRepos: (opts?: {
+    page?: number;
+    q?: string;
+    per_page?: number;
+  }) => Promise<ReposResult>;
+  clearRepos: () => void;
   fetchRepoDetails: (
     owner: string,
     repo: string
@@ -36,6 +50,8 @@ type GitHubStore = {
 export const useGitHubStore = create<GitHubStore>((set) => ({
   status: null,
   repos: [],
+  reposPage: 1,
+  reposHasMore: false,
   loadingRepos: false,
 
   fetchStatus: async () => {
@@ -52,16 +68,42 @@ export const useGitHubStore = create<GitHubStore>((set) => ({
 
   disconnect: async () => {
     await axios.delete("/github/disconnect");
-    set({ status: { connected: false, username: null }, repos: [] });
+    set({
+      status: { connected: false, username: null },
+      repos: [],
+      reposPage: 1,
+      reposHasMore: false,
+    });
   },
 
-  fetchRepos: async () => {
+  clearRepos: () => {
+    set({ repos: [], reposPage: 1, reposHasMore: false });
+  },
+
+  fetchRepos: async (opts) => {
+    const page = opts?.page ?? 1;
+    const q = opts?.q?.trim() ?? "";
+    const per_page = opts?.per_page ?? 10;
+
     set({ loadingRepos: true });
     try {
-      const res = await axios.get("/github/repos");
-      const repos = res.data.repos as GitHubRepo[];
-      set({ repos, loadingRepos: false });
-      return repos;
+      const params = new URLSearchParams({
+        page: String(page),
+        per_page: String(per_page),
+      });
+      if (q) params.set("q", q);
+
+      const res = await axios.get(`/github/repos?${params.toString()}`);
+      const data = res.data as ReposResult;
+
+      set({
+        repos: data.repos,
+        reposPage: data.page,
+        reposHasMore: data.has_more,
+        loadingRepos: false,
+      });
+
+      return data;
     } catch {
       set({ loadingRepos: false });
       throw new Error("Failed to load repositories");

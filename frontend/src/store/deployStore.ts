@@ -33,16 +33,21 @@ export type Deployment = {
   img_url:string;
   autoDeploy?: boolean;
   lastWebhookAt?: string;
+  githubWebhookManaged?: boolean;
+  githubRepoFullName?: string;
 };
+
+import type { BuildLogEntry } from "../lib/buildLogs";
 
 export type Data = {
   repo_url: string;
-      project_type: string;
-      buildCommands: string;
-      installCommands: string;
-      buildDir:string;
-      branch?: string;
-}
+  project_type: string;
+  buildCommands: string;
+  installCommands: string;
+  buildDir: string;
+  branch?: string;
+};
+
 export type Build = {
   _id: string;
   build_name: string;
@@ -53,22 +58,13 @@ export type Build = {
   duration?: number;
   deployment_id: string;
   triggeredBy?: "manual" | "webhook";
+  logs?: BuildLogEntry[];
 };
 type Redeployed = {
   deployment_id: string,
       build_name: string,
       status: BuildStatus.Queued,
 }
-type WebhookInfo = {
-  webhook_url: string;
-  webhook_secret: string;
-  auto_deploy: boolean;
-  branch: string;
-  last_webhook_at?: string;
-  github_webhook_managed?: boolean;
-  github_repo?: string | null;
-};
-
 type DeployStore = {
   deployments: Deployments[];
   builds: Build[];
@@ -78,7 +74,6 @@ type DeployStore = {
   deployed : Deployed | null ;
   redeployed : Redeployed | null;
   deploy_img : string | null;
-  webhookInfo: WebhookInfo | null;
   fetchDeployments: () => Promise<void>;
   fetchBuilds: (deployment_id: string) => Promise<void>;
   selectDeployment: (d: Deployment) => void;
@@ -88,9 +83,6 @@ type DeployStore = {
   fetchDeployment: (deployment_id: string) => Promise<void>;
   fetchBuild : (slug:string) => Promise<void>;
   getImg:(deployment_id:string) => Promise<void>;
-  fetchWebhookInfo: (deployment_id: string) => Promise<WebhookInfo>;
-  updateAutoDeploy: (deployment_id: string, auto_deploy: boolean) => Promise<void>;
-  regenerateWebhookSecret: (deployment_id: string) => Promise<WebhookInfo>;
 };
 
 export const useDeployStore = create<DeployStore>((set) => ({
@@ -102,7 +94,6 @@ export const useDeployStore = create<DeployStore>((set) => ({
   deployed : null,
   redeployed:null,
   deploy_img:null,
-  webhookInfo: null,
   getImg: async (deployment_id:string)=>{
     const res = await axios.post(`/host/getimg`,{deployment_id});
     set({deploy_img:res.data.url})
@@ -152,32 +143,5 @@ fetchDeployment: async (deployment_id: string) => {
   }));
   await useAuthStore.getState().fetchUser();
 },
-
-  fetchWebhookInfo: async (deployment_id: string) => {
-    const res = await axios.get(`/host/webhook?deployment_id=${deployment_id}`);
-    const info = res.data as WebhookInfo;
-    set({ webhookInfo: info });
-    return info;
-  },
-
-  updateAutoDeploy: async (deployment_id: string, auto_deploy: boolean) => {
-    await axios.patch("/host/auto-deploy", { deployment_id, auto_deploy });
-    set((state) => ({
-      deployment: state.deployment
-        ? { ...state.deployment, autoDeploy: auto_deploy }
-        : null,
-      webhookInfo: state.webhookInfo
-        ? { ...state.webhookInfo, auto_deploy }
-        : null,
-    }));
-  },
-
-  regenerateWebhookSecret: async (deployment_id: string) => {
-    await axios.post("/host/webhook/regenerate", { deployment_id });
-    const res = await axios.get(`/host/webhook?deployment_id=${deployment_id}`);
-    const info = res.data as WebhookInfo;
-    set({ webhookInfo: info });
-    return info;
-  },
 
 }));

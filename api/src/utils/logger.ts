@@ -1,35 +1,48 @@
-import { publishLog } from "./pub";
+import { publishLog, type LogEntry, type LogLevel } from "./pub";
+import { queuePersistLog } from "./persistBuildLogs";
+
+export type { LogEntry, LogLevel };
 
 export type BuildLogger = {
   log: (msg: string) => void;
+  success: (msg: string) => void;
   error: (msg: string) => void;
-  getLogs: () => string[];
+  stdout: (msg: string) => void;
+  stderr: (msg: string) => void;
+  getLogs: () => LogEntry[];
 };
-export  const formatDate = (date: string) => {
-    return new Date(date).toLocaleString("en-IN", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-export function makeBuildLogger(buildId: string): BuildLogger {
-  const lines: string[] = [];
-  const ts = () => new Date().toISOString();
 
-  const emit = (prefix: string, msg: string) => {
-    const line = `[${formatDate(ts())}] ${prefix}${msg}`;
-    lines.push(line);
-    console.log(line);
-    publishLog(buildId, line).catch((err) => {
-      console.error(`Failed to publish log for buildId ${buildId}: ${err.message}`);
-    });
+function emit(
+  buildId: string,
+  lines: LogEntry[],
+  level: LogLevel,
+  message: string
+) {
+  const entry: LogEntry = {
+    level,
+    message: message.trim(),
+    at: Date.now(),
   };
+  if (!entry.message) return;
+
+  lines.push(entry);
+  const prefix = level === "error" ? "ERR" : level === "stderr" ? "WRN" : "LOG";
+  console.log(`[build ${buildId}] ${prefix} ${entry.message}`);
+  queuePersistLog(buildId, entry);
+  publishLog(buildId, entry).catch((err) => {
+    console.error(`Failed to publish log for buildId ${buildId}: ${err.message}`);
+  });
+}
+
+export function makeBuildLogger(buildId: string): BuildLogger {
+  const lines: LogEntry[] = [];
 
   return {
-    log: (msg) => emit("", msg),
-    error: (msg) => emit("ERROR: ", msg),
+    log: (msg) => emit(buildId, lines, "info", msg),
+    success: (msg) => emit(buildId, lines, "success", msg),
+    error: (msg) => emit(buildId, lines, "error", msg),
+    stdout: (msg) => emit(buildId, lines, "stdout", msg),
+    stderr: (msg) => emit(buildId, lines, "stderr", msg),
     getLogs: () => [...lines],
   };
 }
