@@ -1,0 +1,13 @@
+version: "2"
+
+# Authtoken: run once globally (already done):
+#   ngrok config add-authtoken <your-token>
+# Stored in %LOCALAPPDATA%\ngrok\ngrok.yml — do not put tokens in this file.
+
+tunnels:
+  hostic-api:
+    addr: 5000
+    proto: http
+  hostic-proxy:
+    addr: 8080
+    proto: http

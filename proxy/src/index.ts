@@ -8,7 +8,12 @@ import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Deployments, IDeployment } from "./model/Deployments.model";
 import { Builds, BuildStatus } from "./model/Builds.model";
-import { extractSlugFromHost, getAppsDomain } from "./config";
+import {
+  getAppsDomain,
+  resolveRequestTarget,
+  resolveRequestedFile,
+  usesPathRouting,
+} from "./config";
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -51,22 +56,30 @@ function getOriginalHostname(req: Request): string {
   );
 }
 
-function resolveRequestedFile(reqPath: string): string {
-  if (reqPath === "/") return "/index.html";
-  if (!reqPath.includes(".")) return "/index.html"; // SPA fallback
-  return reqPath;
+function resolveRequestedFilePath(reqPath: string): string {
+  return resolveRequestedFile(reqPath);
 }
 
 app.use(async (req: Request, res: Response) => {
   try {
     const hostname = getOriginalHostname(req);
-    const slug = extractSlugFromHost(hostname);
-    console.log(`Incoming host=${hostname} slug=${slug} appsDomain=${getAppsDomain()}`);
+    const target = resolveRequestTarget(hostname, req.path);
 
-    if (!slug) {
+    if (!target) {
+      if (usesPathRouting()) {
+        res.status(404).send(
+          "Not found. Ngrok path mode: use https://<your-proxy-ngrok>/d/<slug>/"
+        );
+        return;
+      }
       res.status(404).sendFile(path.join(PUBLIC_PATH, "404.html"));
       return;
     }
+
+    const { slug, assetPath } = target;
+    console.log(
+      `Incoming host=${hostname} slug=${slug} appsDomain=${getAppsDomain()} path=${assetPath}`
+    );
 
     const deployment: IDeployment | null = await Deployments.findOne({ slug });
     console.log("Deployment Found = " + deployment)
@@ -107,7 +120,7 @@ app.use(async (req: Request, res: Response) => {
     }
 
     const artifactBase = build.artifact_path.replace(/^\/+|\/+$/g, "");
-    const filePath = resolveRequestedFile(req.path);
+    const filePath = resolveRequestedFilePath(assetPath);
     const fileKey = `${artifactBase}${filePath}`.replace(/^\/+/, "");
 
     console.log(`Requested Path: ${req.path} -> fileKey=${fileKey}`);
@@ -153,7 +166,8 @@ app.use(async (req: Request, res: Response) => {
 });
 
 app.listen(PORT, () => {
-  console.log(
-    `Proxy server on port ${PORT} (apps domain: ${getAppsDomain()})`
-  );
+  const mode = usesPathRouting()
+    ? "path mode (/d/{slug}/) — for ngrok"
+    : `subdomain mode (*.${getAppsDomain()})`;
+  console.log(`Proxy server on port ${PORT} (${mode})`);
 });
