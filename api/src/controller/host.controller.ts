@@ -18,6 +18,7 @@ import {
   setGitHubWebhookActive,
   refreshGitHubWebhookSecret,
 } from "../utils/githubWebhooks";
+import { normalizeDeploymentSlug } from "../utils/slug";
 
 function getApiPublicUrl(): string {
   return (process.env.API_PUBLIC_URL || "http://localhost:5000").replace(
@@ -44,6 +45,7 @@ export const deploy = async (
       installCommands,
       buildDir,
       branch,
+      slug: requestedSlug,
     } = req.body as {
       repo_url: string;
       project_type: ProjectType;
@@ -51,6 +53,7 @@ export const deploy = async (
       installCommands?: string;
       buildDir?: string;
       branch?: string;
+      slug?: string;
     };
 
     const incResult = await User.updateOne(
@@ -62,7 +65,32 @@ export const deploy = async (
       return res.status(403).json({ message: "Maximum deployments reached!" });
     }
 
-    const slug = generateSlug();
+    let slug: string;
+    if (requestedSlug?.trim()) {
+      const normalized = normalizeDeploymentSlug(requestedSlug);
+      if (!normalized) {
+        await User.updateOne(
+          { _id: user_id },
+          { $inc: { deployments_count: -1 } }
+        );
+        return res.status(400).json({
+          message:
+            "Invalid slug — use 2–48 chars, lowercase letters, numbers, and hyphens",
+        });
+      }
+      const taken = await Deployments.findOne({ slug: normalized });
+      if (taken) {
+        await User.updateOne(
+          { _id: user_id },
+          { $inc: { deployments_count: -1 } }
+        );
+        return res.status(409).json({ message: "Slug already taken" });
+      }
+      slug = normalized;
+    } else {
+      slug = generateSlug();
+    }
+
     const deployment = await Deployments.create({
       user_id,
       repo_url,

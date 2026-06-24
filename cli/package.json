@@ -1,0 +1,27 @@
+{
+  "name": "hostic-cli",
+  "version": "0.1.0",
+  "description": "Deploy to Hostic from your terminal",
+  "license": "MIT",
+  "type": "commonjs",
+  "bin": {
+    "hostic": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsc -b && node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "simple-git": "^3.28.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.15",
+    "typescript": "^5.8.3"
+  }
+}

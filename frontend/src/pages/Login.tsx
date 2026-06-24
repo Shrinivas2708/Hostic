@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import React, { useEffect, useState } from "react";
@@ -10,6 +10,8 @@ import { PageContainer } from "../components/layout/PageContainer";
 
 function Login() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const cliSession = searchParams.get("cli_session");
   const [userName, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [usernameError, setUsernameError] = useState("");
@@ -46,7 +48,10 @@ function Login() {
     }
 
     if (hasError) return;
-    login({ userName, password });
+    const redirectTo = cliSession
+      ? `/cli-auth?session=${encodeURIComponent(cliSession)}`
+      : undefined;
+    login({ userName, password }, redirectTo);
   };
 
   useEffect(() => {

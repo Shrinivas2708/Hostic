@@ -17,7 +17,10 @@ export const useAuth = () => {
   const { setToken, fetchUser } = useAuthStore();
   const navigate = useNavigate();
 
-  const login = async ({ userName, password }: AuthPayload) => {
+  const login = async (
+    { userName, password }: AuthPayload,
+    redirectTo?: string
+  ) => {
     try {
       setLoading(true);
       setError(null);
@@ -25,7 +28,7 @@ export const useAuth = () => {
       const token = res.data.token;
       setToken(token);
       await fetchUser();
-      navigate('/dashboard');
+      navigate(redirectTo ?? '/dashboard');
     } catch (err) {
       if (isAxiosError(err)) {
         setError(err.response?.data?.message || 'Login failed');

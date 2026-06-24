@@ -1,7 +1,7 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDeploy } from "../hooks/useDeploy";
 import { useGitHubStore } from "../store/githubStore";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { addToast } from "@heroui/toast";
 import { Label } from "../components/ui/label";
 import { Input } from "../components/ui/input";
@@ -11,6 +11,8 @@ import { Card } from "../components/ui/card";
 import { PageContainer, PageHeader } from "../components/layout/PageContainer";
 import { Spinner } from "@heroui/spinner";
 import type { Data } from "../store/deployStore";
+import { parseGithubRepoUrl } from "../lib/projectDefaults";
+import { RefreshCw, Sparkles } from "lucide-react";
 
 function Deploy() {
   const [searchParams] = useSearchParams();
@@ -18,7 +20,7 @@ function Deploy() {
   const ownerParam = searchParams.get("owner");
   const repoParam = searchParams.get("repo");
   const navigate = useNavigate();
-  const { fetchRepoDetails } = useGitHubStore();
+  const { fetchRepoDetails, fetchProjectDefaults } = useGitHubStore();
   const [data, setData] = useState<Data>({
     repo_url: "",
     project_type: "",
@@ -29,9 +31,46 @@ function Deploy() {
   });
   const [branches, setBranches] = useState<string[]>([]);
   const [loadingRepo, setLoadingRepo] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+  const [detectedPath, setDetectedPath] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [repoLabel, setRepoLabel] = useState("");
   const { createDeployment, error } = useDeploy();
+
+  const repoIdentity = useMemo(() => {
+    if (ownerParam && repoParam) {
+      return { owner: ownerParam, repo: repoParam };
+    }
+    return parseGithubRepoUrl(data.repo_url);
+  }, [ownerParam, repoParam, data.repo_url]);
+
+  const applyDetectedDefaults = useCallback(
+    async (branch: string, buildDir: string) => {
+      if (!repoIdentity) return;
+
+      setDetecting(true);
+      try {
+        const result = await fetchProjectDefaults(
+          repoIdentity.owner,
+          repoIdentity.repo,
+          { branch, dir: buildDir }
+        );
+
+        setData((prev) => ({
+          ...prev,
+          project_type: result.project_type,
+          installCommands: result.installCommands,
+          buildCommands: result.buildCommands,
+        }));
+        setDetectedPath(result.detected ? result.package_json_path : null);
+      } catch {
+        setDetectedPath(null);
+      } finally {
+        setDetecting(false);
+      }
+    },
+    [repoIdentity, fetchProjectDefaults]
+  );
 
   useEffect(() => {
     async function loadRepo() {
@@ -49,6 +88,7 @@ function Deploy() {
           }));
           setBranches(branchList);
           setRepoLabel(repo.full_name);
+          await applyDetectedDefaults(repo.default_branch, "./");
         } catch {
           addToast({
             title: "Error",
@@ -65,6 +105,10 @@ function Deploy() {
       if (urlParam) {
         setData((prev) => ({ ...prev, repo_url: urlParam }));
         setRepoLabel(urlParam.split("/").slice(-2).join("/"));
+        const parsed = parseGithubRepoUrl(urlParam);
+        if (parsed) {
+          await applyDetectedDefaults("main", "./");
+        }
         return;
       }
 
@@ -77,7 +121,30 @@ function Deploy() {
     }
 
     loadRepo();
-  }, [urlParam, ownerParam, repoParam, navigate, fetchRepoDetails]);
+  }, [
+    urlParam,
+    ownerParam,
+    repoParam,
+    navigate,
+    fetchRepoDetails,
+    applyDetectedDefaults,
+  ]);
+
+  useEffect(() => {
+    if (!repoIdentity || loadingRepo) return;
+
+    const timer = setTimeout(() => {
+      applyDetectedDefaults(data.branch ?? "main", data.buildDir);
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [
+    data.buildDir,
+    data.branch,
+    repoIdentity,
+    loadingRepo,
+    applyDetectedDefaults,
+  ]);
 
   const handleDeploy = async () => {
     if (!data.buildCommands) {
@@ -145,8 +212,8 @@ function Deploy() {
         title="Configure build"
         description={
           ownerParam
-            ? `Deploying ${repoLabel} — auto-redeploy on push is enabled via GitHub.`
-            : "Set install and build commands for your project."
+            ? `Deploying ${repoLabel} — settings are read from package.json; edit anything below.`
+            : "Build commands are suggested from package.json when possible — you can override them."
         }
       />
 
@@ -163,6 +230,38 @@ function Deploy() {
             }
           />
         </div>
+
+        {repoIdentity && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-brand/20 bg-brand/5 px-3 py-2.5 text-sm">
+            <div className="flex items-start gap-2 text-on-dark">
+              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+              <span>
+                {detectedPath ? (
+                  <>
+                    Detected from{" "}
+                    <span className="font-mono text-xs">{detectedPath}</span>
+                  </>
+                ) : detecting ? (
+                  "Reading package.json…"
+                ) : (
+                  "No package.json at this path — using static defaults"
+                )}
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              loading={detecting}
+              onClick={() =>
+                applyDetectedDefaults(data.branch ?? "main", data.buildDir)
+              }
+              className="h-8 shrink-0 px-3 text-xs"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Re-detect
+            </Button>
+          </div>
+        )}
 
         <div>
           <Label htmlFor="project-type">Project type</Label>
@@ -228,6 +327,10 @@ function Deploy() {
               setData((prev) => ({ ...prev, buildDir: e.target.value }))
             }
           />
+          <p className="mt-1 text-xs text-muted">
+            Monorepo? Set e.g. <span className="font-mono">./frontend</span> —
+            commands update when this changes
+          </p>
         </div>
 
         <div>

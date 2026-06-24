@@ -293,3 +293,67 @@ export function parseOwnerRepo(
   if (!match) return null;
   return { owner: match[1], repo: match[2] };
 }
+
+export async function fetchRepoFileText(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  filePath: string,
+  ref: string
+): Promise<string | null> {
+  const encodedPath = filePath
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+
+  const res = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(ref)}`,
+    {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${accessToken}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    }
+  );
+
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`GitHub API error ${res.status}: ${body}`);
+  }
+
+  const data = (await res.json()) as {
+    content?: string;
+    encoding?: string;
+  };
+
+  if (data.encoding !== "base64" || !data.content) return null;
+  return Buffer.from(data.content.replace(/\n/g, ""), "base64").toString("utf8");
+}
+
+export async function fetchPublicRepoFileText(
+  owner: string,
+  repo: string,
+  filePath: string,
+  ref: string
+): Promise<string | null> {
+  const url = `https://raw.githubusercontent.com/${owner}/${repo}/${encodeURIComponent(ref)}/${filePath}`;
+  const res = await fetch(url);
+  if (res.status === 404) return null;
+  if (!res.ok) return null;
+  return res.text();
+}
+
+export async function readRepoFileText(
+  accessToken: string | null | undefined,
+  owner: string,
+  repo: string,
+  filePath: string,
+  ref: string
+): Promise<string | null> {
+  if (accessToken) {
+    return fetchRepoFileText(accessToken, owner, repo, filePath, ref);
+  }
+  return fetchPublicRepoFileText(owner, repo, filePath, ref);
+}

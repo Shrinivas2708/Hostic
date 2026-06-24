@@ -9,10 +9,16 @@ import {
   getRepo,
   listRepoBranches,
   listUserReposPaginated,
+  readRepoFileText,
   verifyGitHubOAuthState,
 } from "../utils/github";
 import { removeGitHubWebhookForDeployment } from "../utils/githubWebhooks";
 import { Deployments } from "../model/Deployments.model";
+import {
+  detectProjectDefaultsFromPackageJson,
+  packageJsonPath,
+  packageLockPath,
+} from "../utils/projectDefaults";
 
 export const getGitHubStatus = async (
   req: Request,
@@ -227,6 +233,46 @@ export const getRepoDetails = async (
         owner: repoData.owner.login,
       },
       branches,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const detectProjectSettings = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const user = await User.findById(req.id).select("+githubAccessToken");
+    const { owner, repo } = req.params;
+    const branch =
+      (typeof req.query.branch === "string" ? req.query.branch.trim() : "") ||
+      "main";
+    const buildDir =
+      typeof req.query.dir === "string" ? req.query.dir.trim() : "./";
+
+    const pkgPath = packageJsonPath(buildDir);
+    const lockPath = packageLockPath(buildDir);
+    const token = user?.githubAccessToken ?? null;
+
+    const [pkgJson, lockFile] = await Promise.all([
+      readRepoFileText(token, owner, repo, pkgPath, branch),
+      readRepoFileText(token, owner, repo, lockPath, branch),
+    ]);
+
+    const defaults = detectProjectDefaultsFromPackageJson(
+      pkgJson,
+      Boolean(lockFile)
+    );
+
+    res.json({
+      ...defaults,
+      detected: Boolean(pkgJson),
+      package_json_path: pkgPath,
+      branch,
+      buildDir: buildDir || "./",
     });
   } catch (err) {
     next(err);

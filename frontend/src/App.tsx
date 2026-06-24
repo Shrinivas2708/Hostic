@@ -5,6 +5,7 @@ import { ProtectedRoute } from "./routes/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import CliAuth from "./pages/CliAuth";
 import Dashboard from "./pages/Dashboard";
 import { useAuthStore } from "./store/authStore";
 import { useEffect, useRef } from "react";
@@ -37,6 +38,7 @@ function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/cli-auth" element={<CliAuth />} />
             <Route
               path="/dashboard"
               element={

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import axios from "../lib/axios";
+import type { DetectedProjectDefaults } from "../lib/projectDefaults";
 
 export type GitHubRepo = {
   id: number;
@@ -45,6 +46,11 @@ type GitHubStore = {
     owner: string,
     repo: string
   ) => Promise<{ repo: GitHubRepo; branches: string[] }>;
+  fetchProjectDefaults: (
+    owner: string,
+    repo: string,
+    opts?: { branch?: string; dir?: string }
+  ) => Promise<DetectedProjectDefaults>;
 };
 
 export const useGitHubStore = create<GitHubStore>((set) => ({
@@ -113,5 +119,16 @@ export const useGitHubStore = create<GitHubStore>((set) => ({
   fetchRepoDetails: async (owner: string, repo: string) => {
     const res = await axios.get(`/github/repos/${owner}/${repo}`);
     return res.data as { repo: GitHubRepo; branches: string[] };
+  },
+
+  fetchProjectDefaults: async (owner, repo, opts) => {
+    const params = new URLSearchParams();
+    if (opts?.branch) params.set("branch", opts.branch);
+    if (opts?.dir) params.set("dir", opts.dir);
+    const qs = params.toString();
+    const res = await axios.get(
+      `/github/repos/${owner}/${repo}/detect${qs ? `?${qs}` : ""}`
+    );
+    return res.data as DetectedProjectDefaults;
   },
 }));

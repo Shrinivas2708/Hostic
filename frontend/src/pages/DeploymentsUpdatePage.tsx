@@ -12,7 +12,9 @@ import { Label } from "../components/ui/label";
 import { Select } from "../components/ui/select";
 import { PageContainer, PageHeader } from "../components/layout/PageContainer";
 import { getDeploymentUrl } from "../lib/config";
-import { Github, Zap } from "lucide-react";
+import { parseGithubRepoUrl } from "../lib/projectDefaults";
+import { useGitHubStore } from "../store/githubStore";
+import { Github, RefreshCw, Zap } from "lucide-react";
 
 type SettingsForm = {
   branch: string;
@@ -55,8 +57,10 @@ export default function DeploymentDetailsPage() {
     updateDeployment,
   } = useDeploy();
   const navigate = useNavigate();
+  const { fetchProjectDefaults } = useGitHubStore();
   const [settings, setSettings] = useState<SettingsForm | null>(null);
   const [saving, setSaving] = useState(false);
+  const [detecting, setDetecting] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -100,6 +104,55 @@ export default function DeploymentDetailsPage() {
     const data = await redeploy(deployment._id);
     if (data) {
       navigate(`/deployments/${data.deployment_id}/${data.build_name}`);
+    }
+  };
+
+  const handleDetectSettings = async () => {
+    if (!deployment || !settings) return;
+
+    const parsed = parseGithubRepoUrl(deployment.repo_url);
+    if (!parsed) {
+      addToast({
+        title: "Cannot detect",
+        description: "Only GitHub repositories are supported.",
+        color: "danger",
+      });
+      return;
+    }
+
+    setDetecting(true);
+    try {
+      const result = await fetchProjectDefaults(parsed.owner, parsed.repo, {
+        branch: settings.branch,
+        dir: settings.buildDir,
+      });
+
+      setSettings((s) =>
+        s
+          ? {
+              ...s,
+              project_type: result.project_type,
+              installCommands: result.installCommands,
+              buildCommands: result.buildCommands,
+            }
+          : s
+      );
+
+      addToast({
+        title: result.detected ? "Settings detected" : "Using defaults",
+        description: result.detected
+          ? `Read ${result.package_json_path}`
+          : "No package.json at that path — filled static defaults",
+        color: result.detected ? "success" : "warning",
+      });
+    } catch {
+      addToast({
+        title: "Detection failed",
+        description: "Connect GitHub or check branch / directory.",
+        color: "danger",
+      });
+    } finally {
+      setDetecting(false);
     }
   };
 
@@ -243,9 +296,21 @@ export default function DeploymentDetailsPage() {
           </Card>
 
           <Card padding="md" className="space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
-              Build settings
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+                Build settings
+              </h2>
+              <Button
+                type="button"
+                variant="outline"
+                loading={detecting}
+                onClick={handleDetectSettings}
+                className="h-8 px-3 text-xs"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Detect from repo
+              </Button>
+            </div>
 
             <div>
               <Label htmlFor="branch">Branch</Label>
