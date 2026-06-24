@@ -29,8 +29,10 @@ function App() {
   return (
     <div className="relative flex min-h-screen flex-col bg-canvas text-on-dark">
       <BrowserRouter>
-        <Navbar />
-        <main className="relative z-10 flex-grow">
+        <header className="sticky top-0 z-50 bg-canvas">
+          <Navbar />
+        </header>
+        <main className="relative z-0 flex-grow bg-canvas">
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />

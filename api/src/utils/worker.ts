@@ -13,9 +13,11 @@ import uploadDirectoryToR2 from "./upload";
 import { flushBuildLogs } from "./persistBuildLogs";
 import { safeRemoveDir } from "./dockerFs";
 import {
-  canReuseDepsFromR2,
-  restoreDepsFromR2,
-  saveDepsToR2,
+  buildInstallCommand,
+  ensureNpmCacheDir,
+  getNpmCacheContainerPath,
+  restoreDepsCache,
+  saveDepsCache,
 } from "./depsCache";
 import {
   copyRepoToWorkDir,
@@ -70,63 +72,69 @@ export async function processJob(job: BuildJob) {
       path.relative(workDir, projectRoot).replace(/\\/g, "/") || ".";
 
     const lockfileInfo = getLockfileInfo(projectRoot);
-    const depsCacheMeta =
-      lockfileInfo &&
-      (await canReuseDepsFromR2(slug, lockfileInfo, projectRootRel));
-    let skipInstall = !!depsCacheMeta;
+    let preferOffline = false;
+    let npmCacheHostPath: string | null = null;
 
-    if (skipInstall && depsCacheMeta) {
-      try {
-        await restoreDepsFromR2(slug, depsCacheMeta, projectRoot, logger);
-        logger.success(
-          `Skipping install — ${depsCacheMeta.lockfile} unchanged (loaded from storage)`
-        );
-      } catch {
-        skipInstall = false;
-        logger.log("Storage cache restore failed — running fresh install");
-      }
-    }
-
-    if (!skipInstall) {
-      const installCmd = `
-echo "[INSTALL] Installing packages..." && \
-${installCommands}
-`.trim();
-
-      logger.log("Installing dependencies...");
-      await runStreamingDocker(
-        dockerCmd(projectRoot, installCmd, `build-${buildId}-install`),
+    if (lockfileInfo) {
+      npmCacheHostPath = await ensureNpmCacheDir(deploymentId);
+      preferOffline = await restoreDepsCache(
+        deploymentId,
+        slug,
+        lockfileInfo,
+        projectRootRel,
         logger
       );
-
-      if (lockfileInfo) {
-        try {
-          await saveDepsToR2(
-            slug,
-            projectRoot,
-            lockfileInfo,
-            projectRootRel,
-            logger
-          );
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          logger.log(
-            `Could not save dependencies to storage (${msg}) — future builds will reinstall`
-          );
-        }
+      if (!preferOffline) {
+        logger.log("No warm npm cache — cold install");
       }
     }
 
+    const installCmd = buildInstallCommand(
+      installCommands ?? "npm install",
+      preferOffline
+    );
     const buildCmd = `
 echo "[BUILD] Starting build process..." && \
 ${buildCommands}
 `.trim();
+    const combinedCmd = `${installCmd} && ${buildCmd}`;
 
+    const extraVolumes = npmCacheHostPath
+      ? [
+          {
+            host: npmCacheHostPath,
+            container: getNpmCacheContainerPath(),
+          },
+        ]
+      : undefined;
+
+    logger.log(
+      preferOffline
+        ? "Installing dependencies (warm npm cache)..."
+        : "Installing dependencies..."
+    );
     logger.log("Running build...");
     await runStreamingDocker(
-      dockerCmd(projectRoot, buildCmd, `build-${buildId}`),
+      dockerCmd(projectRoot, combinedCmd, `build-${buildId}`, extraVolumes),
       logger
     );
+
+    if (lockfileInfo) {
+      try {
+        await saveDepsCache(
+          deploymentId,
+          slug,
+          lockfileInfo,
+          projectRootRel,
+          logger
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.log(
+          `Could not save npm cache (${msg}) — future builds may be slower`
+        );
+      }
+    }
 
     const artifactPath = detectArtifactPath(projectRoot, project_type, logger);
     if (!artifactPath) {
@@ -185,7 +193,7 @@ ${buildCommands}
     try {
       await flushBuildLogs(buildId);
     } catch (err) {
-      console.error(`Failed to flush logs for ${buildId}:`, err);
+      console.error(`Failed to flush logs for ${buildId}`, err);
     }
 
     if (workDir && fs.existsSync(workDir)) {

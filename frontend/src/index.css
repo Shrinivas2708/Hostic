@@ -74,16 +74,16 @@
     --radius: 8px;
   }
 
-  * {
-    @apply border-hairline;
-  }
-
   html {
-    @apply scroll-smooth antialiased;
+    @apply scroll-smooth antialiased bg-canvas;
   }
 
   body {
     @apply bg-canvas font-sans text-on-dark;
+  }
+
+  #root {
+    @apply min-h-screen bg-canvas;
   }
 }
 
@@ -135,4 +135,13 @@
   .scrollbar-simple::-webkit-scrollbar-thumb:hover {
     background: #5a5a5a;
   }
+}
+
+/* Unlayered so this wins over HeroUI's light :root background in @layer base */
+html,
+:root,
+[data-theme],
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-on-dark);
 }

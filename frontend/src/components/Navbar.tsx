@@ -14,15 +14,12 @@ export const Navbar = () => {
       .toUpperCase();
 
   return (
-    <nav className="sticky top-0 z-50 h-16 w-full border-b border-hairline bg-canvas/95 backdrop-blur-sm">
+    <nav className="h-16 w-full border-0 bg-canvas">
       <div className="mx-auto flex h-full max-w-content items-center justify-between px-5 md:px-8">
         <Link
           to="/"
           className="flex items-center gap-2 text-lg font-bold tracking-tight text-on-dark"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand text-xs font-bold text-on-primary">
-            H
-          </span>
           Hostic
         </Link>
 
