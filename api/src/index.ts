@@ -10,6 +10,7 @@ import userRouter from "./router/user.routes";
 import githubRouter from "./router/github.routes";
 import { handleGitHubWebhook } from "./controller/webhook.controller";
 import { attachBuildSocketServer } from "./utils/socketServer";
+import { getCorsOptions } from "./utils/cors";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,7 +22,7 @@ app.post(
   handleGitHubWebhook
 );
 
-app.use(cors());
+app.use(cors(getCorsOptions()));
 app.use(express.json());
 
 app.get("/", async (req, res) => {
