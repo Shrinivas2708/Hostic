@@ -23,7 +23,7 @@ export async function setupGitHubWebhookForDeployment(
 
   if (!isPublicWebhookUrl(webhookUrl)) {
     console.warn(
-      `[GitHub] Skipping webhook for ${deployment.slug}: API_PUBLIC_URL must be publicly reachable (current: ${getApiPublicUrl()}). Use ngrok/cloudflare tunnel in dev, or deploy the API.`
+      `[GitHub] Skipping webhook for ${deployment.slug}: API_PUBLIC_URL must be publicly reachable (current: ${getApiPublicUrl()}). Deploy the API to a public URL for push-to-deploy.`
     );
     return;
   }

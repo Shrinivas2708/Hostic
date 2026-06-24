@@ -9,10 +9,9 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Deployments, IDeployment } from "./model/Deployments.model";
 import { Builds, BuildStatus } from "./model/Builds.model";
 import {
+  extractSlugFromHost,
   getAppsDomain,
-  resolveRequestTarget,
   resolveRequestedFile,
-  usesPathRouting,
 } from "./config";
 
 const app = express();
@@ -32,8 +31,8 @@ if (!R2_ACCESS_KEY || !R2_SECRET_KEY) {
     "Missing R2_ACCESS_KEY or R2_SECRET_KEY environment variables"
   );
 }
-if(!MONGODB_URI){
-  throw new Error("Missing Mongo URI!!")
+if (!MONGODB_URI) {
+  throw new Error("Missing Mongo URI!!");
 }
 const s3Client = new S3Client({
   region: "auto",
@@ -45,7 +44,6 @@ mongoose
   .connect(MONGODB_URI)
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Trust proxy so we can read x-forwarded-host
 app.set("trust proxy", true);
 
 function getOriginalHostname(req: Request): string {
@@ -56,33 +54,18 @@ function getOriginalHostname(req: Request): string {
   );
 }
 
-function resolveRequestedFilePath(reqPath: string): string {
-  return resolveRequestedFile(reqPath);
-}
-
 app.use(async (req: Request, res: Response) => {
   try {
     const hostname = getOriginalHostname(req);
-    const target = resolveRequestTarget(hostname, req.path);
+    const slug = extractSlugFromHost(hostname);
+    console.log(`Incoming host=${hostname} slug=${slug} appsDomain=${getAppsDomain()}`);
 
-    if (!target) {
-      if (usesPathRouting()) {
-        res.status(404).send(
-          "Not found. Ngrok path mode: use https://<your-proxy-ngrok>/d/<slug>/"
-        );
-        return;
-      }
+    if (!slug) {
       res.status(404).sendFile(path.join(PUBLIC_PATH, "404.html"));
       return;
     }
 
-    const { slug, assetPath } = target;
-    console.log(
-      `Incoming host=${hostname} slug=${slug} appsDomain=${getAppsDomain()} path=${assetPath}`
-    );
-
     const deployment: IDeployment | null = await Deployments.findOne({ slug });
-    console.log("Deployment Found = " + deployment)
     if (!deployment?.current_build_id) {
       console.log(`Deployment not found for slug: ${slug}`);
       res.status(404).sendFile(path.join(PUBLIC_PATH, "404.html"));
@@ -97,7 +80,6 @@ app.use(async (req: Request, res: Response) => {
       return;
     }
 
-    // Show building page if build is still queued or in progress
     if (
       build.status === BuildStatus.Building ||
       build.status === BuildStatus.Queued
@@ -106,21 +88,14 @@ app.use(async (req: Request, res: Response) => {
       return;
     }
 
-    // No artifact means no successful build
     if (build.status !== BuildStatus.Success || !build.artifact_path) {
       console.log(`No successful build for ${deployment.current_build_id}`);
       res.status(404).sendFile(path.join(PUBLIC_PATH, "404.html"));
       return;
     }
 
-    if (!build?.artifact_path) {
-      console.log(`No successful build for ${deployment.current_build_id}`);
-      res.status(404).sendFile(path.join(PUBLIC_PATH, "404.html"));
-      return;
-    }
-
     const artifactBase = build.artifact_path.replace(/^\/+|\/+$/g, "");
-    const filePath = resolveRequestedFilePath(assetPath);
+    const filePath = resolveRequestedFile(req.path);
     const fileKey = `${artifactBase}${filePath}`.replace(/^\/+/, "");
 
     console.log(`Requested Path: ${req.path} -> fileKey=${fileKey}`);
@@ -130,7 +105,6 @@ app.use(async (req: Request, res: Response) => {
       new GetObjectCommand({ Bucket: R2_BUCKET, Key: fileKey }),
       { expiresIn: 3600 }
     );
-    console.log(`Signed URL: ${r2Url}`);
 
     const r2Req = httpsRequest(r2Url, { method: "GET" });
 
@@ -148,7 +122,7 @@ app.use(async (req: Request, res: Response) => {
         "Cache-Control": "public, max-age=3600",
       });
 
-      pipeline(r2Resp, res, (err: any) => {
+      pipeline(r2Resp, res, (err: unknown) => {
         if (err) console.error("Streaming error:", err);
       });
     });
@@ -166,8 +140,5 @@ app.use(async (req: Request, res: Response) => {
 });
 
 app.listen(PORT, () => {
-  const mode = usesPathRouting()
-    ? "path mode (/d/{slug}/) — for ngrok"
-    : `subdomain mode (*.${getAppsDomain()})`;
-  console.log(`Proxy server on port ${PORT} (${mode})`);
+  console.log(`Proxy server on port ${PORT} (apps domain: ${getAppsDomain()})`);
 });

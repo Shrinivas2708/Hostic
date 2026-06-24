@@ -76,7 +76,7 @@ All services share **MongoDB** for metadata. **Redis** is used only for build pu
 2. `POST /api/webhooks/github/:webhookSecret` verifies HMAC, matches repo + branch
 3. Triggers `triggerDeploymentBuild(..., { triggeredBy: "webhook" })`
 
-> Local dev: webhooks are skipped when `API_PUBLIC_URL` is `localhost` — use ngrok or deploy the API for push-to-deploy.
+> Local dev: webhooks are skipped when `API_PUBLIC_URL` is `localhost` — deploy the API publicly for push-to-deploy.
 
 ---
 
@@ -231,31 +231,14 @@ Requires: **Node 20+**, **Docker**, **MongoDB**, **Redis**, **R2 credentials**.
 
 ## Production URLs
 
-| Resource | Where it runs | URL pattern |
-|----------|---------------|-------------|
-| Dashboard | Vercel / static host | `https://shribuilds.in` |
-| API + WebSocket | VPS / tunnel | `https://api.shribuilds.in` |
-| **Deployed user apps** | **Proxy (VPS)** | `https://{slug}.apps.shribuilds.in` |
-| GitHub OAuth callback | API | `{API_PUBLIC_URL}/api/github/callback` |
+| Resource | URL pattern |
+|----------|-------------|
+| Dashboard | your frontend host |
+| API | `API_PUBLIC_URL` |
+| Deployed apps | `https://{slug}.apps.yourdomain.com` (wildcard DNS → proxy) |
+| GitHub OAuth callback | `{API_PUBLIC_URL}/api/github/callback` |
 
-### DNS (production)
-
-```
-shribuilds.in              →  Vercel (dashboard)
-api.shribuilds.in          →  your API server IP / tunnel
-*.apps.shribuilds.in       →  proxy server IP (wildcard — required)
-```
-
-Set the same domain everywhere:
-
-| Service | Env var | Example |
-|---------|---------|---------|
-| Proxy | `APPS_DOMAIN` | `apps.shribuilds.in` |
-| API | `DEPLOY_URL_TEMPLATE` | `https://{slug}.apps.shribuilds.in` |
-| Frontend | `VITE_DEPLOY_URL_TEMPLATE` | `https://{slug}.apps.shribuilds.in` |
-| CLI | `HOSTIC_DEPLOY_URL_TEMPLATE` | `https://{slug}.apps.shribuilds.in` |
-
-Put **Caddy or nginx** in front of the proxy on `:443` with a wildcard TLS cert (Let's Encrypt DNS challenge for `*.apps.shribuilds.in`).
+Set `APPS_DOMAIN`, `DEPLOY_URL_TEMPLATE`, and `VITE_DEPLOY_URL_TEMPLATE` to match.
 
 ---
 
